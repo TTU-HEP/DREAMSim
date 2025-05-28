@@ -13,10 +13,7 @@
 #include <TFile.h>
 
 // Header file for the classes stored in the TTree if any.
-#include "vector"
-#include "vector"
-
-using namespace std;
+#include <vector>
 
 class Py8Jet
 {
@@ -26,41 +23,18 @@ public:
 
    // Fixed size dimensions of array or collections stored in the TTree if any.
 
-   // Declaration of leaf types
-   Int_t run;
-   Int_t event;
-   Int_t nparticles;
-   vector<int> *pid;
-   vector<int> *status;
-   vector<int> *mother1;
-   vector<int> *mother2;
-   vector<int> *daughter1;
-   vector<int> *daughter2;
-   vector<int> *color1;
-   vector<int> *color2;
-   vector<double> *px;
-   vector<double> *py;
-   vector<double> *pz;
-   vector<double> *e;
-   vector<double> *m;
+   std::vector<int> *particle_ID;
+   std::vector<double> *particle_E;
+   std::vector<double> *particle_px;
+   std::vector<double> *particle_py;
+   std::vector<double> *particle_pz;
 
    // List of branches
-   TBranch *b_run;        //!
-   TBranch *b_event;      //!
-   TBranch *b_nparticles; //!
-   TBranch *b_pid;        //!
-   TBranch *b_status;     //!
-   TBranch *b_mother1;    //!
-   TBranch *b_mother2;    //!
-   TBranch *b_daughter1;  //!
-   TBranch *b_daughter2;  //!
-   TBranch *b_color1;     //!
-   TBranch *b_color2;     //!
-   TBranch *b_px;         //!
-   TBranch *b_py;         //!
-   TBranch *b_pz;         //!
-   TBranch *b_e;          //!
-   TBranch *b_m;          //!
+   TBranch *b_particle_ID; //!
+   TBranch *b_particle_px; //!
+   TBranch *b_particle_py; //!
+   TBranch *b_particle_pz; //!
+   TBranch *b_particle_e;  //!
 
    Py8Jet(TTree *tree = 0);
    virtual ~Py8Jet();
@@ -133,19 +107,11 @@ void Py8Jet::Init(TTree *tree)
    // (once per file to be processed).
 
    // Set object pointer
-   pid = 0;
-   status = 0;
-   mother1 = 0;
-   mother2 = 0;
-   daughter1 = 0;
-   daughter2 = 0;
-   color1 = 0;
-   color2 = 0;
-   px = 0;
-   py = 0;
-   pz = 0;
-   e = 0;
-   m = 0;
+   particle_ID = 0;
+   particle_E = 0;
+   particle_px = 0;
+   particle_py = 0;
+   particle_pz = 0;
    // Set branch addresses and branch pointers
    if (!tree)
       return;
@@ -153,22 +119,11 @@ void Py8Jet::Init(TTree *tree)
    fCurrent = -1;
    fChain->SetMakeClass(1);
 
-   fChain->SetBranchAddress("run", &run, &b_run);
-   fChain->SetBranchAddress("event", &event, &b_event);
-   fChain->SetBranchAddress("nparticles", &nparticles, &b_nparticles);
-   fChain->SetBranchAddress("pid", &pid, &b_pid);
-   fChain->SetBranchAddress("status", &status, &b_status);
-   fChain->SetBranchAddress("mother1", &mother1, &b_mother1);
-   fChain->SetBranchAddress("mother2", &mother2, &b_mother2);
-   fChain->SetBranchAddress("daughter1", &daughter1, &b_daughter1);
-   fChain->SetBranchAddress("daughter2", &daughter2, &b_daughter2);
-   fChain->SetBranchAddress("color1", &color1, &b_color1);
-   fChain->SetBranchAddress("color2", &color2, &b_color2);
-   fChain->SetBranchAddress("px", &px, &b_px);
-   fChain->SetBranchAddress("py", &py, &b_py);
-   fChain->SetBranchAddress("pz", &pz, &b_pz);
-   fChain->SetBranchAddress("e", &e, &b_e);
-   fChain->SetBranchAddress("m", &m, &b_m);
+   fChain->SetBranchAddress("particle_ID", &particle_ID, &b_particle_ID);
+   fChain->SetBranchAddress("particle_px", &particle_px, &b_particle_px);
+   fChain->SetBranchAddress("particle_py", &particle_py, &b_particle_py);
+   fChain->SetBranchAddress("particle_pz", &particle_pz, &b_particle_pz);
+   fChain->SetBranchAddress("particle_E", &particle_E, &b_particle_e);
    Notify();
 }
 

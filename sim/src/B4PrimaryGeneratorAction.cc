@@ -77,7 +77,7 @@ B4PrimaryGeneratorAction::B4PrimaryGeneratorAction(B4DetectorConstruction *det, 
     std::cout << "B4PrimaryGeneratorAction:  Using Pythia Event file: " << inFileName << std::endl;
     finPy8 = new TFile(inFileName.c_str());
     TTree *py8tree;
-    finPy8->GetObject("py8tree", py8tree);
+    finPy8->GetObject("Particles", py8tree);
     py8evt = new Py8Jet(py8tree);
     py8evt->Init(py8tree);
     std::cout << "B4PrimaryGeneratorAction: nentries=" << py8tree->GetEntriesFast() << std::endl;
@@ -316,18 +316,15 @@ void B4PrimaryGeneratorAction::getPy8Event(G4Event *anEvent)
 
   G4PrimaryVertex *vertex = new G4PrimaryVertex(G4ThreeVector(x, y, z), t);
 
-  for (int i = 0; i < py8evt->pid->size(); i++)
+  for (int i = 0; i < py8evt->particle_ID->size(); i++)
   {
-    if (py8evt->daughter1->at(i) == 0)
-    {
-      int pid = py8evt->pid->at(i);
-      double px = py8evt->px->at(i) * GeV;
-      double py = py8evt->py->at(i) * GeV;
-      double pz = py8evt->pz->at(i) * GeV;
-      G4ParticleDefinition *particle_definition = particleTable->FindParticle(pid);
-      G4PrimaryParticle *particle = new G4PrimaryParticle(particle_definition, px, py, pz);
-      vertex->SetPrimary(particle);
-    }
+    int pid = py8evt->particle_ID->at(i);
+    double px = py8evt->particle_px->at(i) * GeV;
+    double py = py8evt->particle_py->at(i) * GeV;
+    double pz = py8evt->particle_pz->at(i) * GeV;
+    G4ParticleDefinition *particle_definition = particleTable->FindParticle(pid);
+    G4PrimaryParticle *particle = new G4PrimaryParticle(particle_definition, px, py, pz);
+    vertex->SetPrimary(particle);
   } // end of loop over particles...
 
   anEvent->AddPrimaryVertex(vertex);
@@ -343,35 +340,23 @@ void B4PrimaryGeneratorAction::getPy8Event(G4Event *anEvent)
 void B4PrimaryGeneratorAction::printPy8Event()
 {
   // Header.
-  cout << "\n --------  PY8CaloX Event Listing  " << py8evt->event << "----------"
+  cout << "\n --------  PY8CaloX Event Listing ----------"
        << "-------------------------------------------------\n \n    no    "
-       << "    id    status     mothers   daughters     colou"
-       << "rs      p_x        p_y        p_z         e          m \n";
+       << "ID      p_x        p_y        p_z         e \n";
   cout << endl;
 
-  cout << "Pythia Event " << py8evt->event << endl;
   // Precision. At high energy switch to scientific format for momenta.
   int precision = 3; // use 3 for now (sk)
   int prec = max(3, precision);
-  bool useFixed = (py8evt->e->at(0) < 1e5);
 
-  for (int i = 0; i < py8evt->nparticles; i++)
+  for (int i = 0; i < py8evt->particle_E->size(); i++)
   {
     cout << setw(6) << std::right << i
-         << setw(10) << std::right << py8evt->pid->at(i)
-         << setw(10) << py8evt->status->at(i)
-         << setw(6) << py8evt->mother1->at(i)
-         << setw(6) << py8evt->mother2->at(i)
-         << setw(6) << py8evt->daughter1->at(i)
-         << setw(6) << py8evt->daughter2->at(i)
-         << setw(6) << py8evt->color1->at(i)
-         << setw(6) << py8evt->color2->at(i)
-         << ((useFixed) ? fixed : scientific) << setprecision(prec)
-         << setw(8 + prec) << py8evt->px->at(i)
-         << setw(8 + prec) << py8evt->py->at(i)
-         << setw(8 + prec) << py8evt->pz->at(i)
-         << setw(8 + prec) << py8evt->e->at(i)
-         << setw(8 + prec) << py8evt->m->at(i)
+         << setw(10) << std::right << py8evt->particle_ID->at(i)
+         << setw(8 + prec) << py8evt->particle_px->at(i)
+         << setw(8 + prec) << py8evt->particle_py->at(i)
+         << setw(8 + prec) << py8evt->particle_pz->at(i)
+         << setw(8 + prec) << py8evt->particle_E->at(i)
          << "\n";
   } // end of loop over particles...
 }
@@ -388,19 +373,13 @@ void B4PrimaryGeneratorAction::FillHEPparticles(
   if (py8evt == NULL)
     return;
 
-  int n = py8evt->pid->size();
+  int n = py8evt->particle_ID->size();
   for (int i = 0; i < n; i++)
   {
-    mHepPID->push_back(py8evt->pid->at(i));
-    mHepStatus->push_back(py8evt->status->at(i));
-    mHepMother1->push_back(py8evt->mother1->at(i));
-    mHepMother2->push_back(py8evt->mother2->at(i));
-    mHepDaughter1->push_back(py8evt->daughter1->at(i));
-    mHepDaughter2->push_back(py8evt->daughter2->at(i));
-    mHepPx->push_back(py8evt->px->at(i));
-    mHepPy->push_back(py8evt->py->at(i));
-    mHepPz->push_back(py8evt->pz->at(i));
-    mHepE->push_back(py8evt->e->at(i));
-    mHepMass->push_back(py8evt->m->at(i));
+    mHepPID->push_back(py8evt->particle_ID->at(i));
+    mHepPx->push_back(py8evt->particle_px->at(i));
+    mHepPy->push_back(py8evt->particle_py->at(i));
+    mHepPz->push_back(py8evt->particle_pz->at(i));
+    mHepE->push_back(py8evt->particle_E->at(i));
   } // end of loop over particles...
 }
