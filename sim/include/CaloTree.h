@@ -33,9 +33,14 @@ public:
 
   //  inout paramter handling ....
   bool setParam(string key, string val);
-  float getParamF(string key);
-  int getParamI(string key);
-  string getParamS(string key);
+  bool getParamB(string key, bool is_required = true, bool default_value = false); // return true if the key is found in the map.
+  float getParamF(string key, bool is_required = true, float default_value = 98765.0);
+  double getParamD(string key, bool is_required = true, double default_value = 98765.0)
+  {
+    return static_cast<double>(getParamF(key, is_required, default_value));
+  }
+  int getParamI(string key, bool is_required = true, int default_value = 98765);
+  string getParamS(string key, bool is_required = true, string default_value = "aaa");
 
   //  called fro SteppingAction...
   void accumulateHits(CaloHit aHit);

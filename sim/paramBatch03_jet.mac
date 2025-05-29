@@ -1,0 +1,47 @@
+#$$$ jobName    Dream
+#$$$ runNumber  04
+#$$$ runSeq     00
+#$$$ runConfig    Test    (string camera number and (rock,air, air) in (cairn, chamber, passage)
+#$$$ numberOfEvents   10
+#$$$ eventsInNtupe     5     (maximum number of events in ntuple output file)
+
+#$$$ rootPre       mc      (file name will be Pre+runName+runNumber+runSeq+runConfig+NoE.root)
+#$$$ createNtuple  true    (true or false))
+#$$$ miniNtuple    false    (true of false, true to drop some objects to minimize Ntuple.)
+#$$$ saveTruthHits true    (true or false)
+
+#$$$ CaloXPythiaON false   (true or false, true to use Pythia for particle gun)
+#$$$ CaloXPythiaXmin 0.1 
+#$$$ CaloXPythiaXmax 0.11
+#$$$ CaloXPythiaYmin 0.1
+#$$$ CaloXPythiaYmax 0.11
+#$$$ CaloXPythiaFile /home/yongbinfeng/Desktop/CaloSim/DREAMSim/pythia/PSParticles.root
+
+
+#$$$ csvHits2dSC       0  (number of events to save 2D hits in a csv file)
+#$$$ csvHits2dCH       0
+#$$$ csvHits3dCH       0     (number of events to save 3D hits in a csv file)
+
+#$$$ sipmType   1    (1= J 6 mm 6.0V, 2= J 6 mm 2.5V)
+
+#$$$ gridSizeX        3      (grid count) - value hard coded in CaloID for now
+#$$$ gridSizeY        4      (grid count) - value hard coded in CaloID for now
+#$$$ gridSizeT       50.0    (pico sec)   - value hard coded in CaloID for now
+#$$$ caloRotationX    2.0      (degree)   def 2.0
+#$$$ caloRotationY    2.0      (degree)   def 2.0
+#$$$ calibSen        1.766   (edep in MeV for 100 GeV e+, 2 deg)  with 0.0001 MeV cut
+#$$$ calibCen        2.764   (edep in MeV for 100 GeV e+, 2 deg)  
+#$$$ calibCph        4659.  (number of chrenkov photons for 100 GeV e+, 2 deg)
+#$$$ calibSph        1.766   (edep for 100 GeV e+, 2 deg) with 0.0001 MeV cut 
+
+# G4 commands.
+# Initialize kernel
+/run/initialize
+
+/process/list
+/physics_list/list
+#/process/inactivate positronNuclear
+#
+# /tracking/verbose 1
+/tracking/verbose 0
+#

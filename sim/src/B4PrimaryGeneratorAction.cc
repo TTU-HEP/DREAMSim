@@ -57,8 +57,6 @@
 
 using namespace std;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 B4PrimaryGeneratorAction::B4PrimaryGeneratorAction(B4DetectorConstruction *det, CaloTree *histo)
     : G4VUserPrimaryGeneratorAction(),
       fParticleGun(nullptr), fDetector(det), hh(histo)
@@ -96,14 +94,10 @@ B4PrimaryGeneratorAction::B4PrimaryGeneratorAction(B4DetectorConstruction *det, 
   }
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 B4PrimaryGeneratorAction::~B4PrimaryGeneratorAction()
 {
   delete fParticleGun;
 }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void B4PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
 {
@@ -202,86 +196,19 @@ void B4PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
 
 void B4PrimaryGeneratorAction::getParamFromEnvVars()
 {
-  CaloXPythiaON = 0;
-  char *param1;
-  param1 = getenv("CaloXPythiaON");
-  if (param1 != NULL)
-  {
-    CaloXPythiaON = atoi(param1);
-  }
+  CaloXPythiaON = hh->getParamB("CaloXPythiaON", false, 0); // default is 0, no Pythia8.
 
-  CaloXPythiaXmin = 0.0;
-  CaloXPythiaXmax = 0.0;
-  CaloXPythiaYmin = 0.0;
-  CaloXPythiaYmax = 0.0;
-  CaloXPythiaZmin = -99999.0;
-  CaloXPythiaZmax = CaloXPythiaZmin; // use the World boundary.
+  CaloXPythiaXmin = hh->getParamD("CaloXPythiaXmin", false, 0.0);
+  CaloXPythiaXmax = hh->getParamD("CaloXPythiaXmax", false, 0.0);
+  CaloXPythiaYmin = hh->getParamD("CaloXPythiaYmin", false, 0.0);
+  CaloXPythiaYmax = hh->getParamD("CaloXPythiaYmax", false, 0.0);
+  CaloXPythiaZmin = hh->getParamD("CaloXPythiaZmin", false, -99999.0);
+  CaloXPythiaZmax = hh->getParamD("CaloXPythiaZmax", false, CaloXPythiaZmin); // use the World boundary.
 
-  char *param2;
-  param2 = getenv("CaloXPythiaXmin");
-  if (param2 != NULL)
-  {
-    CaloXPythiaXmin = atof(param2);
-  }
+  CaloXPythiaSkip = hh->getParamI("CaloXPythiaSkip", false, 0);   // skip this many events.
+  CaloXPythiaPrint = hh->getParamI("CaloXPythiaPrint", false, 5); // print this many events.
 
-  char *param3;
-  param3 = getenv("CaloXPythiaXmax");
-  if (param3 != NULL)
-  {
-    CaloXPythiaXmax = atof(param3);
-  }
-
-  char *param4;
-  param4 = getenv("CaloXPythiaYmin");
-  if (param4 != NULL)
-  {
-    CaloXPythiaYmin = atof(param4);
-  }
-
-  char *param5;
-  param5 = getenv("CaloXPythiaYmax");
-  if (param5 != NULL)
-  {
-    CaloXPythiaYmax = atof(param5);
-  }
-
-  char *param6;
-  param6 = getenv("CaloXPythiaZmin");
-  if (param6 != NULL)
-  {
-    CaloXPythiaZmin = atof(param6);
-  }
-
-  char *param7;
-  param7 = getenv("CaloXPythiaZmax");
-  if (param7 != NULL)
-  {
-    CaloXPythiaZmax = atof(param7);
-  }
-
-  CaloXPythiaSkip = 0;
-  CaloXPythiaPrint = 5; // number of pythia events to print.
-
-  char *param8;
-  param8 = getenv("CaloXPythiaSkip");
-  if (param8 != NULL)
-  {
-    CaloXPythiaSkip = atof(param8);
-  }
-
-  char *param9;
-  param9 = getenv("CaloXPythiaPrint");
-  if (param9 != NULL)
-  {
-    CaloXPythiaPrint = atof(param9);
-  }
-
-  char *param10;
-  param10 = getenv("CaloXPythiaFile");
-  if (param10 != NULL)
-  {
-    CaloXPythiaFile = std::string(param10);
-  }
+  CaloXPythiaFile = hh->getParamS("CaloXPythiaFile");
 
   return;
 }
@@ -335,8 +262,6 @@ void B4PrimaryGeneratorAction::getPy8Event(G4Event *anEvent)
   // std::cout<<"B4PrimaryGeneratorAction::getPy8Event:"<<primary->GetMomentum()<<std::endl;
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 void B4PrimaryGeneratorAction::printPy8Event()
 {
   // Header.
@@ -361,7 +286,6 @@ void B4PrimaryGeneratorAction::printPy8Event()
   } // end of loop over particles...
 }
 
-// -----------------------------------------------------------------------------
 void B4PrimaryGeneratorAction::FillHEPparticles(
     std::vector<int> *mHepPID, std::vector<int> *mHepStatus,
     std::vector<int> *mHepMother1, std::vector<int> *mHepMother2,
