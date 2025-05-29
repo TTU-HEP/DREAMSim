@@ -201,13 +201,6 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
     // rodReplicaNumber=touchable->GetReplicaNumber(3);
     // layerReplicaNumber=touchable->GetReplicaNumber(4);
   }
-  // std::cout<<"Stepping Action: depth "<<depth<<"  volume "<<thisName<<"  copy no "<<thisCopyNo;
-  // std::cout<<" calotype "<<caloType;
-  // std::cout<<" f "<<fiberNumber;
-  // std::cout<<" h "<<holeNumber;
-  // std::cout<<" r "<<rodNumber<<" lyr "<<layerNumber;
-  //  std::cout<<" "<<std::endl;
-  // std::cout<<" replicas "<<holeReplicaNumber<<"  "<<rodReplicaNumber<<"  "<<layerReplicaNumber<<std::endl;
 
   hh->accumulateEnergy(edep / GeV, caloType);
 
@@ -235,7 +228,8 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
   aHit.globaltime = track->GetGlobalTime() / ns;
   aHit.localtime = track->GetLocalTime() / ns;
   aHit.steplength = track->GetTrackLength() / cm;
-  aHit.edep = edep / GeV; //  in GeV
+  aHit.edep = edep / GeV;             //  in GeV
+  aHit.edepNonIon = edepNonIon / GeV; // in GeV
   aHit.edepbirk = edep * birks / GeV;
   if (ncer.size() > 0)
   {
@@ -423,7 +417,6 @@ double B4bSteppingAction::getBirk(const G4Step *step)
   }
 
   return weight;
-  ;
 }
 
 double B4bSteppingAction::getBirkHC(double dEStep, double step, double charge, double density)

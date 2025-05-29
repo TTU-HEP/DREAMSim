@@ -208,7 +208,7 @@ void B4PrimaryGeneratorAction::getParamFromEnvVars()
   CaloXPythiaSkip = hh->getParamI("CaloXPythiaSkip", false, 0);   // skip this many events.
   CaloXPythiaPrint = hh->getParamI("CaloXPythiaPrint", false, 5); // print this many events.
 
-  CaloXPythiaFile = hh->getParamS("CaloXPythiaFile");
+  CaloXPythiaFile = hh->getParamS("CaloXPythiaFile", false, "test.root");
 
   return;
 }

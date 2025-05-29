@@ -60,8 +60,7 @@ CaloTree::CaloTree(string macFileName, int argc, char **argv)
       getParamS("jobName") + "_run" + getParamS("runNumber") + "_" +
       getParamS("runSeq") + "_" + getParamS("runConfig") + "_" +
       getParamS("numberOfEvents") + "evt_";
-  std::cout << "CalXPythiaON=" << getParamB("CaloXPythiaON") << std::endl;
-  if (!getParamB("CaloXPythiaON"))
+  if (!getParamB("CaloXPythiaON", false, false))
   {
     outname += getParamS("gun_particle") + "_" + getParamS("gun_energy_min") + "_" + getParamS("gun_energy_max");
   }
