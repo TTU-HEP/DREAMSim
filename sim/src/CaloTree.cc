@@ -273,6 +273,10 @@ CaloTree::CaloTree(string macFileName, int argc, char **argv)
   tree->Branch("OP_pol_x", &mP_pol_x);
   tree->Branch("OP_pol_y", &mP_pol_y);
   tree->Branch("OP_pol_z", &mP_pol_z);
+
+  tree->Branch("nOPsCer", &mP_nOPsCer);
+  tree->Branch("nOPsCer_Cer", &mP_nOPsCer_Cer);
+  tree->Branch("nOPsCer_Sci", &mP_nOPsCer_Sci);
 }
 
 // ########################################################################
@@ -557,6 +561,10 @@ void CaloTree::clearCaloTree()
   mP_pol_x.clear();
   mP_pol_y.clear();
   mP_pol_z.clear();
+
+  mP_nOPsCer = 0;
+  mP_nOPsCer_Cer = 0;
+  mP_nOPsCer_Sci = 0;
 }
 
 // ########################################################################
@@ -650,6 +658,20 @@ void CaloTree::accumulateEnergy(double edep, int type = 0)
     m_eScintruth += edep;
   if (type == 3)
     m_eCentruth += edep;
+}
+
+void CaloTree::accumulateOPsCer(bool isCoreC, int nOPs)
+{
+  if (isCoreC)
+  {
+    mP_nOPsCer_Cer += nOPs; // Cerenkov fibers
+    mP_nOPsCer += nOPs;
+  }
+  else
+  {
+    mP_nOPsCer_Sci += nOPs; // Scintillation fiber
+    mP_nOPsCer += nOPs;
+  }
 }
 
 // ########################################################################

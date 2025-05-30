@@ -803,6 +803,18 @@ void B4bSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
     fiberIdx = 0;
   }
 
+  if (isCoreC || isCoreS)
+  {
+    if (track->GetCurrentStepNumber() == 1)
+    {
+      auto *creatorProcess = track->GetCreatorProcess();
+      if (creatorProcess && creatorProcess->GetProcessName() == "Cerenkov")
+      {
+        hh->accumulateOPsCer(isCoreC, 1);
+      }
+    }
+  }
+
   int fiberNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx);
   int holeNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 1);
   int rodNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 2);
@@ -810,7 +822,6 @@ void B4bSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
 
   double x = track->GetPosition().x() / cm;
   double y = track->GetPosition().y() / cm;
-  // if (!(x > -0.0 && x < 0.4 && y > -0.0 && y < 0.4))
   // if ((!(isCoreS || isCoreC || isCladS || isCladC) || rodNumber != 45 || layerNumber != 40) && !isGoingOutside)
   if (!(isCoreS || isCoreC || isCladS || isCladC) || rodNumber != 45 || layerNumber != 40)
   {

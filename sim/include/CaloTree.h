@@ -45,6 +45,7 @@ public:
   //  called fro SteppingAction...
   void accumulateHits(CaloHit aHit);
   void accumulateEnergy(double eleak, int type);
+  void accumulateOPsCer(bool isCoreC = 0, int nOPs = 1);
   void saveBeamXYZE(string, int, float, float, float, float);
 
   // for histogrming...
@@ -227,6 +228,10 @@ private:
   vector<double> mP_pol_x;
   vector<double> mP_pol_y;
   vector<double> mP_pol_z;
+
+  int mP_nOPsCer;     // number of Cerenkov photons
+  int mP_nOPsCer_Cer; // number of Cerenkov photons in cherenkov fibers
+  int mP_nOPsCer_Sci; // number of Cerenkov photons in scintillation fibers
 };
 
 #endif
