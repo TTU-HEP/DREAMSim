@@ -72,7 +72,14 @@ for part in rdfs.keys():
         .Define("OP_passEnd_isCoreS", "OP_passEnd && OP_isCoreS") \
         .Define("OP_passEnd_normalized", "OP_passEnd * eventweight") \
         .Define("OP_passEnd_isCoreC_normalized", "OP_passEnd_isCoreC * eventweight") \
-        .Define("OP_passEnd_isCoreS_normalized", "OP_passEnd_isCoreS * eventweight")
+        .Define("OP_passEnd_isCoreS_normalized", "OP_passEnd_isCoreS * eventweight") \
+        .Define("OP_isCoreC_normalized", "OP_isCoreC * eventweight") \
+        .Define("OP_isCoreS_normalized", "OP_isCoreS * eventweight")
+        
+    rdfs_new[part] = rdfs_new[part].Define("OP_energy_final", "sqrt(OP_mom_final_z*OP_mom_final_z+OP_mom_final_y*OP_mom_final_y+OP_mom_final_x*OP_mom_final_x)") \
+        .Define("OP_wavelength_final", "1239.8e-9 / OP_energy_final") \
+        .Define("OP_energy_produced", "sqrt(OP_mom_produced_z*OP_mom_produced_z+OP_mom_produced_y*OP_mom_produced_y+OP_mom_produced_x*OP_mom_produced_x)") \
+        .Define("OP_wavelength_produced", "1239.8e-9 / OP_energy_produced")
         
     rdfs_new[part] = rdfs_new[part].Define("nOPs_produced", "Sum(OP_time_produced > 0.)") \
         .Define("nOPs_produced_isCoreC", "Sum(OP_time_produced > 0. && OP_isCoreC)") \
@@ -98,7 +105,8 @@ figures = ['eLeaktruth', 'eCalotruth', 'eTotaltruth', 'eTotalGeant',
            'time_vs_truthhit_z', 'time_vs_truthhit_r',
            "OP_time_produced", "OP_time_final", "OP_time_final_vs_OP_pos_produced_z",
            "eDep_center", "eDep_center_vs_nOPs_produced", "eDep_center_vs_nOPs_passEnd",
-           "nOPs_produced", "nOPs_passEnd", "capEff"]
+           "nOPs_produced", "nOPs_passEnd", "capEff",
+           "OP_wavelength_produced", "OP_wavelength_final"]
 
 
 evtlist = [1, 3, 5, 10, 15]
@@ -157,7 +165,7 @@ for part, rdf in rdfs.items():
         ("time" + suffix, "time", 50, 0, 50), "truthhit_globaltime", "eweight")
     histos['time_zoomed'][part] = rdf.Histo1D(
         ("time_zoomed" + suffix, "time_zoomed", 50, 0, 10), "truthhit_globaltime", "eweight")
-
+    
     histos['truthhit_x_vs_truthhit_y'][part] = rdf.Histo2D(
         ("truthhit_x_vs_truthhit_y" + suffix, "truthhit_x_vs_truthhit_y", 50, -20, 20, 50, -20, 20), "truthhit_x", "truthhit_y", "eweight")
     histos['truthhit_x_vs_truthhit_z'][part] = rdf.Histo2D(
@@ -199,6 +207,11 @@ for part, rdf in rdfs.items():
             ("OP_time_final" + suffix, "OP_time_final", 50, 5, 17), "OP_time_final", f"OP_passEnd_{fib}_normalized")
         histos["OP_time_final_vs_OP_pos_produced_z"][oppart] = rdf.Histo2D(
             ("OP_time_final_vs_OP_pos_produced_z" + suffix, "OP_time_final_vs_OP_pos_produced_z", 50, 6, 17, 50, -100, 100), "OP_time_final", "OP_pos_produced_z", f"OP_passEnd_{fib}_normalized")
+        
+        histos['OP_wavelength_produced'][oppart] = rdf.Histo1D(
+            ("OP_wavelength_produced" + suffix, "OP_wavelength_produced", 100, 300, 700), "OP_wavelength_produced", f"OP_{fib}_normalized")
+        histos['OP_wavelength_final'][oppart] = rdf.Histo1D(
+            ("OP_wavelength_final" + suffix, "OP_wavelength_final", 100, 300, 700), "OP_wavelength_final", f"OP_passEnd_{fib}_normalized")
 
 
 colormaps = {
@@ -273,6 +286,10 @@ DrawHistos(list(histos['OP_time_produced'].values()), list(histos['OP_time_produ
 )), 0, 5, "Time [ns]", 1e1, 1e8, "Deposited Energy [GeV]", "OP_time_produced", **args)
 DrawHistos(list(histos['OP_time_final'].values()), list(histos['OP_time_final'].keys(
 )), 5, 17, "Time [ns]", 1e1, 1e8, "Deposited Energy [GeV]", "OP_time_final", **args)
+DrawHistos(list(histos['OP_wavelength_produced'].values()), list(histos['OP_wavelength_produced'].keys(
+)), 300, 700, "Wavelength [nm]", 1e-1, 1e5, "# Photons", "OP_wavelength_produced", **args)
+DrawHistos(list(histos['OP_wavelength_final'].values()), list(histos['OP_wavelength_final'].keys(
+)), 300, 700, "Wavelength [nm]", 1e-1, 1e5, "# Photons", "OP_wavelength_final", **args)
 
 
 # 2D plots

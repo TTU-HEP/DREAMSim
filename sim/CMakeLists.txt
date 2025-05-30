@@ -66,6 +66,7 @@ set(EXAMPLEB4B_SCRIPTS
   run2.mac
   vis.mac
   paramBatch03_single.mac
+  paramBatch03_jet.mac
   runBatch03_single_param.sh
   runBatch03_single_param_bg01.sh
   )
