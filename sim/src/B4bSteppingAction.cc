@@ -237,6 +237,26 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
     aHit.ncercap = ncer[3]; // including SiPM pde and capturing efficiency
   }
 
+if (track->GetNextVolume() == 0 && aHit.z <= 100 ) // Leakage energy for -100 cm <= z <= 100 cm
+  {
+    double eLeak_lt_z = step->GetPostStepPoint()->GetKineticEnergy();
+    if (particle == G4Positron::Positron())
+    {
+      eLeak_lt_z +=2 * electron_mass_c2;
+    }
+    hh->accumulateEnergy(eLeak_lt_z / GeV, -92);
+  }
+
+if (track->GetNextVolume() == 0 && aHit.z > 100) // Leakage energy for z > 100 cm
+  {
+    double eLeak_gt_z = step->GetPostStepPoint()->GetKineticEnergy();
+    if (particle == G4Positron::Positron())
+    {
+      eLeak_gt_z +=2 * electron_mass_c2;
+    }
+    hh->accumulateEnergy(eLeak_gt_z / GeV, -91);
+  }
+    
   // aHit.print();
 
   hh->accumulateHits(aHit);
