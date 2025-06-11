@@ -215,6 +215,8 @@ CaloTree::CaloTree(string macFileName, int argc, char **argv)
   tree->Branch("eCalotruth", &m_eCalotruth);
   tree->Branch("eWorldtruth", &m_eWorldtruth);
   tree->Branch("eLeaktruth", &m_eLeaktruth);
+  tree->Branch("eLeaktruth_lt_z", &m_eLeaktruth_lt_z);
+  tree->Branch("eLeaktruth_gt_z", &m_eLeaktruth_gt_z);
   tree->Branch("eInvisible", &m_eInvisible);
   tree->Branch("eRodtruth", &m_eRodtruth);
   tree->Branch("eCentruth", &m_eCentruth);
@@ -500,6 +502,8 @@ void CaloTree::clearCaloTree()
   m_eCalotruth = 0.0;
   m_eWorldtruth = 0.0;
   m_eLeaktruth = 0.0;
+  m_eLeaktruth_lt_z = 0.0;
+  m_eLeaktruth_gt_z = 0.0;
   m_eInvisible = 0.0;
   m_eRodtruth = 0.0;
   m_eCentruth = 0.0;
@@ -646,6 +650,10 @@ void CaloTree::accumulateEnergy(double edep, int type = 0)
 {
   if (type == -99)
     m_eLeaktruth += edep;
+  if (type == -91)
+    m_eLeaktruth_gt_z += edep;
+  if (type == -92)
+    m_eLeaktruth_lt_z += edep;
   if (type == -90)
     m_eInvisible += edep;
   if (type == -1)

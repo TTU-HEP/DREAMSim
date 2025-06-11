@@ -151,6 +151,14 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
       // therefore should include it
       eLeak += 2 * electron_mass_c2;
     }
+    if (posA.z() / cm <= 100 / cm)
+    {
+        hh->accumulateEnergy(eLeak / GeV, -92);
+    }
+    if (posA.z() / cm > 100 / cm)
+    {
+        hh->accumulateEnergy(eLeak / GeV, -91);
+    }
     hh->accumulateEnergy(eLeak / GeV, -99);
   }
 
@@ -236,7 +244,7 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
     aHit.ncer = ncer[0];
     aHit.ncercap = ncer[3]; // including SiPM pde and capturing efficiency
   }
-
+    
   // aHit.print();
 
   hh->accumulateHits(aHit);

@@ -167,6 +167,8 @@ private:
   double m_eCalotruth;
   double m_eWorldtruth;
   double m_eLeaktruth;
+  double m_eLeaktruth_gt_z;
+  double m_eLeaktruth_lt_z;
   double m_eInvisible;
   double m_eRodtruth;
   double m_eCentruth;
