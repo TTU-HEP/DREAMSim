@@ -151,6 +151,14 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
       // therefore should include it
       eLeak += 2 * electron_mass_c2;
     }
+    if (posA.z() / cm <= 100 / cm)
+    {
+        hh->accumulateEnergy(eLeak / GeV, -92);
+    }
+    if (posA.z() / cm > 100 / cm)
+    {
+        hh->accumulateEnergy(eLeak / GeV, -91);
+    }
     hh->accumulateEnergy(eLeak / GeV, -99);
   }
 
@@ -235,26 +243,6 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
   {
     aHit.ncer = ncer[0];
     aHit.ncercap = ncer[3]; // including SiPM pde and capturing efficiency
-  }
-
-if (track->GetNextVolume() == 0 && aHit.z <= 100 ) // Leakage energy for -100 cm <= z <= 100 cm
-  {
-    double eLeak_lt_z = step->GetPostStepPoint()->GetKineticEnergy();
-    if (particle == G4Positron::Positron())
-    {
-      eLeak_lt_z +=2 * electron_mass_c2;
-    }
-    hh->accumulateEnergy(eLeak_lt_z / GeV, -92);
-  }
-
-if (track->GetNextVolume() == 0 && aHit.z > 100) // Leakage energy for z > 100 cm
-  {
-    double eLeak_gt_z = step->GetPostStepPoint()->GetKineticEnergy();
-    if (particle == G4Positron::Positron())
-    {
-      eLeak_gt_z +=2 * electron_mass_c2;
-    }
-    hh->accumulateEnergy(eLeak_gt_z / GeV, -91);
   }
     
   // aHit.print();
