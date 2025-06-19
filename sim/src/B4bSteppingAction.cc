@@ -819,7 +819,8 @@ void B4bSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
   double y = track->GetPosition().y() / cm;
   // if (!(x > -0.0 && x < 0.4 && y > -0.0 && y < 0.4))
   // if ((!(isCoreS || isCoreC || isCladS || isCladC) || rodNumber != 45 || layerNumber != 40) && !isGoingOutside)
-  if (!(isCoreS || isCoreC || isCladS || isCladC) || rodNumber != 45 || layerNumber != 40)
+  //if (!(isCoreS || isCoreC || isCladS || isCladC) || rodNumber != 45 || layerNumber != 40)
+  if (!(isCoreS || isCoreC || isCladS || isCladC) || rodNumber < 20 || rodNumber > 60 || layerNumber < 15 || layerNumber > 65)
   {
     // std::cout<<"Stepping Action:  optical photon outside the center"<<std::endl;
     track->SetTrackStatus(fStopAndKill);

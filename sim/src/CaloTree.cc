@@ -379,10 +379,16 @@ void CaloTree::EndEvent()
     m_nhitstruth = m_pidtruth.size();
 
     // optical photon hits
+    int nGoodPhoton = 0;
     for (auto const photon : photonData)
     {
       // if (photon.exitTime == 0.0)
       //   continue;
+      bool goodPhoton = photon.exitPosition.z() > 0.0 && photon.isCoreC;
+      if (!goodPhoton)
+	continue;
+
+      nGoodPhoton += 1;
       mP_trackid.push_back(photon.trackID);
       mP_pos_produced_x.push_back(photon.productionPosition.x());
       mP_pos_produced_y.push_back(photon.productionPosition.y());
@@ -412,12 +418,12 @@ void CaloTree::EndEvent()
 
       // std::cout << "Propagation length in z " << photon.exitPosition.z() - photon.productionPosition.z() << " speed " << (photon.exitTime - photon.productionTime) / (photon.exitPosition.z() - photon.productionPosition.z()) << " costheta " << photon.productionMomentum.z() / photon.productionMomentum.mag() << std::endl;
     }
-    mP_nOPs = photonData.size();
+    mP_nOPs = nGoodPhoton;
 
     //
     tree->Fill();
-    std::cout << "Look into energy deposition in the calorimeter..." << std::endl;
-    std::cout << "  eCalo=" << m_eCalotruth << "  eWorld=" << m_eWorldtruth << "  eLeak=" << m_eLeaktruth << "  eInvisible=" << m_eInvisible << "  eRod=" << m_eRodtruth << "  eCen=" << m_eCentruth << "  eScin=" << m_eScintruth << " eCalo+eWorld+eLeak+eInvisible=" << (m_eCalotruth + m_eWorldtruth + m_eLeaktruth + m_eInvisible) << std::endl;
+    //std::cout << "Look into energy deposition in the calorimeter..." << std::endl;
+    //std::cout << "  eCalo=" << m_eCalotruth << "  eWorld=" << m_eWorldtruth << "  eLeak=" << m_eLeaktruth << "  eInvisible=" << m_eInvisible << "  eRod=" << m_eRodtruth << "  eCen=" << m_eCentruth << "  eScin=" << m_eScintruth << " eCalo+eWorld+eLeak+eInvisible=" << (m_eCalotruth + m_eWorldtruth + m_eLeaktruth + m_eInvisible) << std::endl;
   } //  end of if((eventCounts-1)<getParamI("eventsInNtupe"))
 
   //   analyze this event.

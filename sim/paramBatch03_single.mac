@@ -5,10 +5,10 @@
 #$$$ numberOfEvents   10
 #$$$ eventsInNtupe     5     (maximum number of events in ntuple output file)
 
-#$$$ rootPre       mc      (file name will be Pre+runName+runNumber+runSeq+runConfig+NoE.root)
+#$$$ rootPre       /home/mad24679/work/batchOutput/mc      (file name will be Pre+runName+runNumber+runSeq+runConfig+NoE.root)
 #$$$ createNtuple  true    (true or false))
 #$$$ miniNtuple    false    (true of false, true to drop some objects to minimize Ntuple.)
-#$$$ saveTruthHits true    (true or false)
+#$$$ saveTruthHits false    (true or false)
 
 
 #$$$ gun_particle     e+      (pi+ mu+ e+ etc)
