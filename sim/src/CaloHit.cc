@@ -3,7 +3,7 @@
 #include <iostream> // for cout
 
 CaloHit::CaloHit()
-    : pid(0), trackid(0), calotype(0), x(0.0), y(0.0), z(0.0), steplength(0.0), globaltime(0.0), localtime(0.0), edep(0.0), edepNonIon(0.), edepInv(0.), edepbirk(0.0), ncer(0.0), ncercap(0.0), layerNumber(-1), rodNumber(-1), fiberNumber(-1)
+    : pid(0), trackid(0), calotype(0), x(0.0), y(0.0), z(0.0), steplength(0.0), globaltime(0.0), localtime(0.0), edep(0.0), edepNonIon(0.), edepInv(0.), edepbirk(0.0), process(""), ncer(0.0), ncercap(0.0), layerNumber(-1), rodNumber(-1), fiberNumber(-1)
 {
 }
 
