@@ -206,6 +206,7 @@ CaloTree::CaloTree(string macFileName, int argc, char **argv)
   tree->Branch("truthhit_edepNonIon", &m_edepNonIontruth);
   tree->Branch("truthhit_edepInv", &m_edepInvtruth);
   tree->Branch("truthhit_edepbirk", &m_edepbirktruth);
+  tree->Branch("truthhit_process", &m_processtruth);
   tree->Branch("truthhit_ncer", &m_ncertruth);
   tree->Branch("truthhit_ncercap", &m_ncercaptruth);
   tree->Branch("truthhit_layerNumber", &m_layerNumber);
@@ -493,6 +494,7 @@ void CaloTree::clearCaloTree()
   m_edepNonIontruth.clear();
   m_edepInvtruth.clear();
   m_edepbirktruth.clear();
+  m_processtruth.clear();
   m_ncertruth.clear();
   m_ncercaptruth.clear();
   m_layerNumber.clear();
@@ -591,6 +593,7 @@ void CaloTree::accumulateHits(CaloHit ah)
     m_edepNonIontruth.push_back(ah.edepNonIon);
     m_edepInvtruth.push_back(ah.edepInv);
     m_edepbirktruth.push_back(ah.edepbirk);
+    m_processtruth.push_back(ah.process);
     m_ncertruth.push_back(ah.ncer);
     m_ncercaptruth.push_back(ah.ncercap);
     m_layerNumber.push_back(ah.layerNumber);
