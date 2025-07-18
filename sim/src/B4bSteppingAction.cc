@@ -85,7 +85,6 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
   G4Track *track = step->GetTrack();
   G4int trackID = track->GetTrackID();
 
-  G4StepPoint* preStepPoint = step->GetPreStepPoint();
   const G4VProcess* process = step->GetPostStepPoint()->GetProcessDefinedStep();
   G4String processName = "Unknown";
   if (process) {
