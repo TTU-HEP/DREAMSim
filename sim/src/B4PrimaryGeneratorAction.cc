@@ -174,9 +174,9 @@ void B4PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
 
     float en = ((hh->getParamF("gun_energy_max") - hh->getParamF("gun_energy_min")) * G4UniformRand() + hh->getParamF("gun_energy_min")) * GeV;
     string ptype = hh->getParamS("gun_particle");
-    float px = (hh->getParamF("pMomentum_x"));
-    float py = (hh->getParamF("pMomentum_y"));
-    float pz = (hh->getParamF("pMomentum_z"));
+    float px = ((hh->getParamF("pMomentum_x_max") - hh->getParamF("pMomentum_x_min")) * G4UniformRand() + hh->getParamF("pMomentum_x_min"));
+    float py = ((hh->getParamF("pMomentum_y_max") - hh->getParamF("pMomentum_y_min")) * G4UniformRand() + hh->getParamF("pMomentum_y_min"));
+    float pz = ((hh->getParamF("pMomentum_z_max") - hh->getParamF("pMomentum_z_min")) * G4UniformRand() + hh->getParamF("pMomentum_z_min"));
 
     G4int nofParticles = 1;
     fParticleGun = new G4ParticleGun(nofParticles);
@@ -190,7 +190,7 @@ void B4PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
     // cout<<"B4PrimaryGeneratorAction::GeneratePrimaries set a particle..."<<endl;
     // cout<<"   (x,y,z,en)="<<x<<",  "<<y<<",  "<<z<<",  "<<en<<",  "<<ptype<<endl;
     int pdgid = particleDefinition->GetPDGEncoding();
-    hh->saveBeamXYZE(ptype, pdgid, x, y, z, en);
+    hh->saveBeamXYZEPxPyPz(ptype, pdgid, x, y, z, en, px, py, pz);
   }
 }
 

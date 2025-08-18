@@ -46,7 +46,7 @@ public:
   void accumulateHits(CaloHit aHit);
   void accumulateEnergy(double eleak, int type);
   void accumulateOPsCer(bool isCoreC = 0, int nOPs = 1);
-  void saveBeamXYZE(string, int, float, float, float, float);
+  void saveBeamXYZEPxPyPz(string, int, float, float, float, float, float, float, float);
 
   // for histogrming...
   std::string title;
@@ -74,7 +74,7 @@ private:
 
   string beamType;
   int beamID;
-  float beamX, beamY, beamZ, beamE;
+  float beamX, beamY, beamZ, beamE, beamPX, beamPY, beamPZ;
   //
   string runConfig;
   int runNumber;
@@ -85,6 +85,7 @@ private:
   bool createNtuple;
 
   bool saveTruthHits;
+  bool isMuon;
 
   // hit data in csv file
   map<string, int> csvEvents; // number of events to be written to csv file.
@@ -141,6 +142,9 @@ private:
   float m_beamY;
   float m_beamZ;
   float m_beamE;
+  float m_beamPX; // GeV
+  float m_beamPY; // GeV
+  float m_beamPZ; // GeV
   string m_beamType;
 
   // truth hit variables (no sipm or time or position smearing applied)
