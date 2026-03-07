@@ -16,18 +16,18 @@
 #$$$ gun_particle     e+      (pi+ mu+ e+ etc)
 #$$$ gun_energy_min   1.0     (GeV)
 #$$$ gun_energy_max   150.0    (GeV)
-#$$$ gun_x_min         2.50     (cm)   2.5 =/- 0.5 cm
-#$$$ gun_x_max         2.50     (cm)
-#$$$ gun_y_min        -2.50     (cm)   -2.5 +/- 0.5 cm
+#$$$ gun_x_min         -30.0     (cm)
+#$$$ gun_x_max         -30.0     (cm)
+#$$$ gun_y_min        -2.50     (cm)
 #$$$ gun_y_max        -2.50     (cm)
-#$$$ gun_z_min        -130.0     (cm)
-#$$$ gun_z_max        -130.0     (cm)
-#$$$ pMomentum_x_min    0.0
-#$$$ pMomentum_x_max    0.0
+#$$$ gun_z_min        -10.0     (cm)
+#$$$ gun_z_max        -10.0     (cm)
+#$$$ pMomentum_x_min    1.0
+#$$$ pMomentum_x_max    1.0
 #$$$ pMomentum_y_min    0.0
 #$$$ pMomentum_y_max    0.0
-#$$$ pMomentum_z_min    1.0
-#$$$ pMomentum_z_max    1.0
+#$$$ pMomentum_z_min    0.0
+#$$$ pMomentum_z_max    0.0
 
 #$$$ csvHits2dSC       0  (number of events to save 2D hits in a csv file)
 #$$$ csvHits2dCH       0
