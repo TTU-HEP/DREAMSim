@@ -1,17 +1,17 @@
-#include "CaloID.h"
+#include "CaloXID.h"
 
 #include <iostream> // for cout
 
-CaloID::CaloID()
+CaloXID::CaloXID()
 {
 }
 
-CaloID::~CaloID()
+CaloXID::~CaloXID()
 {
-   // std::cout<<"sk deleting CaloID..."<<std::endl;
+   // std::cout<<"sk deleting CaloXID..."<<std::endl;
 }
 
-CaloID::CaloID(int a_calotype, int a_fiber, int a_layer, int a_rod, double a_z, double a_t)
+CaloXID::CaloXID(int a_calotype, int a_fiber, int a_layer, int a_rod, double a_z, double a_t)
 {
    _type = a_calotype;
    _layer = a_layer;
@@ -62,7 +62,7 @@ CaloID::CaloID(int a_calotype, int a_fiber, int a_layer, int a_rod, double a_z, 
 }
 
 // ------------------------------------------------------------------------------------
-int CaloID::findArea()
+int CaloXID::findArea()
 {
 
    int a = 0;
@@ -90,7 +90,7 @@ int CaloID::findArea()
 }
 
 // ------------------------------------------------------------------------------------
-CaloID::CaloID(int _key)
+CaloXID::CaloXID(int _key)
 {
    //  input _key is defined for only one case,  tslice or zslice...
    // dt=0.05 ;  // nsec
@@ -110,20 +110,20 @@ CaloID::CaloID(int _key)
 }
 
 // ------------------------------------------------------------------------------------
-int CaloID::getTkey()
+int CaloXID::getTkey()
 {
    // return _type + _iy*10 + _ix*1000 + _it*100000 ;
    return packKey(_type, _area, _ix, _iy, _ixx, _iyy, 2, _tslice);
 }
 // ------------------------------------------------------------------------------------
-int CaloID::getZkey()
+int CaloXID::getZkey()
 {
    // return _type + _iy*10 + _ix*1000 + (_iz+500)*100000 ;
    return packKey(_type, _area, _ix, _iy, _ixx, _iyy, 1, _zslice);
 }
 
 // ------------------------------------------------------------------------------------
-int CaloID::packKey(int type, int area, int ix, int iy, int ixx, int iyy, int ztype, int iz)
+int CaloXID::packKey(int type, int area, int ix, int iy, int ixx, int iyy, int ztype, int iz)
 {
    unsigned int sbits[8] = {2, 2, 5, 5, 3, 3, 2, 8}; // bits for packing (31 bits)
 
@@ -155,7 +155,7 @@ int CaloID::packKey(int type, int area, int ix, int iy, int ixx, int iyy, int zt
    return k;
 }
 // ------------------------------------------------------------------------------------
-int CaloID::unpackKey(unsigned int k)
+int CaloXID::unpackKey(unsigned int k)
 {
 
    unsigned int sbits[8] = {2, 2, 5, 5, 3, 3, 2, 8}; // bits for packing (31 bits)
@@ -195,28 +195,28 @@ int CaloID::unpackKey(unsigned int k)
    if (ztype == 1)
    {
       _zslice = iz;
-      _tslice = 0.0;
+      _tslice = 0;
    }
 
    if (ztype == 2)
    {
-      _zslice = 0.0;
+      _zslice = 0;
       _tslice = iz;
    }
 
    if (ztype == 3)
    {
-      _zslice = 0.0;
-      _tslice = 0.0;
+      _zslice = 0;
+      _tslice = 0;
    }
 
    return 0;
 }
 
 // ------------------------------------------------------------------------------------
-void CaloID::print()
+void CaloXID::print()
 {
-   std::cout << "CaloID type " << _type << "  ix " << _ix << "  iy " << _iy;
+   std::cout << "CaloXID type " << _type << "  ix " << _ix << "  iy " << _iy;
    std::cout << "  sub(ixx " << _ixx << "  iyy " << _iyy << ")";
    std::cout << "  zslice " << _zslice << "  tslice " << _tslice << std::endl;
 }

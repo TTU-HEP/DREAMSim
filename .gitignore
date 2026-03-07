@@ -3,3 +3,4 @@ sim/build/
 */log/*
 *root
 *.ipynb*
+*build*

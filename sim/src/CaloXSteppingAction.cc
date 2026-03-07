@@ -1,37 +1,11 @@
-//
-// ********************************************************************
-// * License and Disclaimer                                           *
-// *                                                                  *
-// * The  Geant4 software  is  copyright of the Copyright Holders  of *
-// * the Geant4 Collaboration.  It is provided  under  the terms  and *
-// * conditions of the Geant4 Software License,  included in the file *
-// * LICENSE and available at  http://cern.ch/geant4/license .  These *
-// * include a list of copyright holders.                             *
-// *                                                                  *
-// * Neither the authors of this software system, nor their employing *
-// * institutes,nor the agencies providing financial support for this *
-// * work  make  any representation or  warranty, express or implied, *
-// * regarding  this  software system or assume any liability for its *
-// * use.  Please see the license in the file  LICENSE  and URL above *
-// * for the full disclaimer and the limitation of liability.         *
-// *                                                                  *
-// * This  code  implementation is the result of  the  scientific and *
-// * technical work of the GEANT4 collaboration.                      *
-// * By using,  copying,  modifying or  distributing the software (or *
-// * any work based  on the software)  you  agree  to acknowledge its *
-// * use  in  resulting  scientific  publications,  and indicate your *
-// * acceptance of all terms of the Geant4 Software license.          *
-// ********************************************************************
-//
-//
-/// \file B4bSteppingAction.cc
-/// \brief Implementation of the B4bSteppingAction class
+/// \file CaloXSteppingAction.cc
+/// \brief Implementation of the CaloXSteppingAction class
 
 #include "G4Cerenkov.hh"
 #include "G4Scintillation.hh"
 
-#include "B4bSteppingAction.hh"
-#include "B4DetectorConstruction.hh"
+#include "CaloXSteppingAction.hh"
+#include "CaloXDetectorConstruction.hh"
 
 #include "G4Step.hh"
 #include "G4RunManager.hh"
@@ -44,16 +18,19 @@
 #include "G4SystemOfUnits.hh"
 #include "G4Positron.hh"
 
-#include "CaloID.h"  // including CaloID, CaloHit, CaloTree
-#include "CaloHit.h" // including CaloID, CaloHit, CaloTree
-#include "CaloTree.h"
-#include "PhotonInfo.h"
+#include "CaloXID.h"  // including CaloXID, CaloXHit, CaloXTree
+#include "CaloXHit.h" // including CaloXID, CaloXHit, CaloXTree
+#include "CaloXTree.h"
+#include "CaloXPhotonInfo.h"
 
 #include "TH1D.h"
+#include "G4LogicalVolumeStore.hh"
+#include "G4Tubs.hh"
+#include "G4MaterialPropertiesTable.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-B4bSteppingAction::B4bSteppingAction(B4bEventAction *eventAction, CaloTree *histo)
+CaloXSteppingAction::CaloXSteppingAction(CaloXEventAction *eventAction, CaloXTree *histo)
     : G4UserSteppingAction(),
       fEventAction(eventAction),
       hh(histo)
@@ -62,8 +39,16 @@ B4bSteppingAction::B4bSteppingAction(B4bEventAction *eventAction, CaloTree *hist
   int sipmType = histo->getParamI("sipmType");
   initPDE(sipmType); // 1= J 6 mm 6.0V, 2= J 6 mm 2.5V
 
+  // Read optical photon sampling rod/layer from mac parameters (defaults: 45, 40)
+  opSampleRod   = histo->getParamI("opSampleRod",   false, 45);
+  opSampleLayer = histo->getParamI("opSampleLayer", false, 40);
+  std::cout << "Optical photon sampling: rod=" << opSampleRod
+            << "  layer=" << opSampleLayer << std::endl;
+
+
+
   std::cout << "  " << std::endl;
-  std::cout << "sipmType " << sipmType << " in B4bSteppingAction::B4bSteppingAction" << std::endl;
+  std::cout << "sipmType " << sipmType << " in CaloXSteppingAction::CaloXSteppingAction" << std::endl;
   for (int i = 200; i < 900; i = i + 10)
   {
     float lambda = float(i) + 0.5;
@@ -74,23 +59,24 @@ B4bSteppingAction::B4bSteppingAction(B4bEventAction *eventAction, CaloTree *hist
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-B4bSteppingAction::~B4bSteppingAction()
+CaloXSteppingAction::~CaloXSteppingAction()
 {
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void B4bSteppingAction::UserSteppingAction(const G4Step *step)
+void CaloXSteppingAction::UserSteppingAction(const G4Step *step)
 {
   G4Track *track = step->GetTrack();
   G4int trackID = track->GetTrackID();
 
-  const G4VProcess* process = step->GetPostStepPoint()->GetProcessDefinedStep();
+  const G4VProcess *process = step->GetPostStepPoint()->GetProcessDefinedStep();
   G4String processName = "Unknown";
-  if (process) {
-     processName = process->GetProcessName();
+  if (process)
+  {
+    processName = process->GetProcessName();
   }
-    
+
   // Collect energy and track length step by step
 
   //   === begin of checking optical photon ===
@@ -159,18 +145,17 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
     }
     if (posA.z() / cm <= 100 / cm)
     {
-        hh->accumulateEnergy(eLeak / GeV, -92);
+      hh->accumulateEnergy(eLeak / GeV, -92);
     }
     if (posA.z() / cm > 100 / cm)
     {
-        hh->accumulateEnergy(eLeak / GeV, -91);
+      hh->accumulateEnergy(eLeak / GeV, -91);
     }
     hh->accumulateEnergy(eLeak / GeV, -99);
   }
 
-  // check energy conservation
-  // double e_net_change = findInvisible(step, 0);
-  double e_net_change = 0;
+  // Track invisible energy (nuclear binding energy losses etc.)
+  double e_net_change = findInvisible(step, false);
   hh->accumulateEnergy(e_net_change / GeV, -90);
 
   if (thisName.compare(0, 5, "World") == 0)
@@ -218,9 +203,9 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
 
   hh->accumulateEnergy(edep / GeV, caloType);
 
-  CaloID caloid(caloType, fiberNumber, layerNumber, rodNumber, posA.z(), track->GetGlobalTime());
+  CaloXID caloid(caloType, fiberNumber, layerNumber, rodNumber, posA.z(), track->GetGlobalTime());
 
-  CaloHit aHit;
+  CaloXHit aHit;
   aHit.caloid = caloid;
   aHit.x = posA.x() / cm; // in cm
   aHit.y = posA.y() / cm;
@@ -251,7 +236,7 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
     aHit.ncer = ncer[0];
     aHit.ncercap = ncer[3]; // including SiPM pde and capturing efficiency
   }
-    
+
   // aHit.print();
 
   hh->accumulateHits(aHit);
@@ -261,15 +246,15 @@ void B4bSteppingAction::UserSteppingAction(const G4Step *step)
   // hh->histo1D["cerX"]->Fill(aHit.x/10.0,ncer[0]);
   // hh->histo1D["cerY"]->Fill(aHit.y/10.0,ncer[0]);
 
-  // fEventAction->AccumulateCaloHits(aHit);
+  // fEventAction->AccumulateCaloXHits(aHit);
   // fEventAction->StepAnalysisSensor(step,ncer);   // analysis for the sensor volume.
 
   // fEventAction->StepAnalysis(step,ncer[0],ncer[1]);   // in original sim. Moved to above.
-} // end of B4bSteppingAction::UserSteppingAction.
+} // end of CaloXSteppingAction::UserSteppingAction.
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-vector<double> B4bSteppingAction::UserCerenkov(const G4Step *step)
+vector<double> CaloXSteppingAction::UserCerenkov(const G4Step *step)
 {
   double n_scint = 0;
   double n_cer = 0;
@@ -402,7 +387,7 @@ vector<double> B4bSteppingAction::UserCerenkov(const G4Step *step)
 }
 
 // ========================================================================================
-double B4bSteppingAction::getBirk(const G4Step *step)
+double CaloXSteppingAction::getBirk(const G4Step *step)
 {
   double weight = 1.0;
 
@@ -411,30 +396,30 @@ double B4bSteppingAction::getBirk(const G4Step *step)
   double charge = step->GetTrack()->GetDefinition()->GetPDGCharge();
   double density = step->GetPreStepPoint()->GetMaterial()->GetDensity() / (CLHEP::g / CLHEP::cm3);
   string materialName = step->GetPreStepPoint()->GetMaterial()->GetName();
-  // std::cout<<"B4bEventAction::getBirk:   name="<<materialName<<std::endl;
+  // std::cout<<"CaloXEventAction::getBirk:   name="<<materialName<<std::endl;
 
   /*
        if(materialName.compare(0,8,"G4_PbWO4")==0) {
           weight=getBirkL3(edep,steplength,charge,density);
-          // std::cout<<"B4bEventAction::getBirk:   name="<<materialName<<"   weight="<<weight<<std::endl;
+          // std::cout<<"CaloXEventAction::getBirk:   name="<<materialName<<"   weight="<<weight<<std::endl;
        }
 
        if(materialName.compare(0,14,"H_Scintillator")==0 || materialName.compare(0,26,"G4_PLASTIC_SC_VINYLTOLUENE")==0) {
           weight=getBirkHC(edep,steplength,charge,density);
-          // std::cout<<"B4bEventAction::getBirk:   name="<<materialName<<"   weight="<<weight<<std::endl;
+          // std::cout<<"CaloXEventAction::getBirk:   name="<<materialName<<"   weight="<<weight<<std::endl;
        }
   */
 
   if (materialName.compare(0, 11, "Polystyrene") == 0)
   {
     weight = getBirkHC(edep, steplength, charge, density);
-    // std::cout<<"B4bEventAction::getBirk:   name="<<materialName<<"   weight="<<weight<<std::endl;
+    // std::cout<<"CaloXEventAction::getBirk:   name="<<materialName<<"   weight="<<weight<<std::endl;
   }
 
   return weight;
 }
 
-double B4bSteppingAction::getBirkHC(double dEStep, double step, double charge, double density)
+double CaloXSteppingAction::getBirkHC(double dEStep, double step, double charge, double density)
 {
   double weight = 1.;
   if (charge != 0. && step > 0.)
@@ -452,7 +437,7 @@ double B4bSteppingAction::getBirkHC(double dEStep, double step, double charge, d
   return weight;
 }
 
-double B4bSteppingAction::getBirkL3(double dEStep, double step, double charge, double density)
+double CaloXSteppingAction::getBirkL3(double dEStep, double step, double charge, double density)
 {
   double weight = 1.;
   if (charge != 0. && step > 0.)
@@ -474,7 +459,7 @@ double B4bSteppingAction::getBirkL3(double dEStep, double step, double charge, d
   return weight;
 }
 
-void B4bSteppingAction::initPDE(int sipmType)
+void CaloXSteppingAction::initPDE(int sipmType)
 {
   //  sipmType  1= J-6mm-6.0V,  2=J-6mm-2.5V
   //
@@ -647,7 +632,7 @@ void B4bSteppingAction::initPDE(int sipmType)
     sipmPDE = pde_J_6mm_2p5;
 }
 
-float B4bSteppingAction::getPDE(float lambda)
+float CaloXSteppingAction::getPDE(float lambda)
 {
   float pde = 0.0;
   int k = int(lambda);
@@ -660,7 +645,7 @@ float B4bSteppingAction::getPDE(float lambda)
   return pde;
 }
 
-double B4bSteppingAction::findInvisible(const G4Step *step, bool verbose)
+double CaloXSteppingAction::findInvisible(const G4Step *step, bool verbose)
 {
   // check energy conservation
   // return the energy change that is not GetTotalEnergyDeposit in edep in Geant
@@ -769,149 +754,229 @@ double B4bSteppingAction::findInvisible(const G4Step *step, bool verbose)
   return e_net_change;
 }
 
-void B4bSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
+// ---------------------------------------------------------------------------
+// Helper: compute both meridional and skew TIR results and store into photon.
+// Called once at photon birth for every core photon, regardless of rod.
+// ---------------------------------------------------------------------------
+static void computeAnalyticalTIR(CaloXPhotonInfo &photon,
+                                  const G4ThreeVector &pdir,
+                                  const G4ThreeVector &pos,
+                                  double n_core, double n_clad,
+                                  double R_core, double fiber_half_z,
+                                  double global_time,
+                                  double abs_len)
 {
-  G4Track *track = step->GetTrack();
-  const G4int trackID = track->GetTrackID();
+  const double abs_pz      = std::abs(pdir.z());
+  const double z_exit      = (pdir.z() >= 0.0) ? fiber_half_z : -fiber_half_z;
+  const double z_travel    = std::abs(z_exit - pos.z());
+  const double tir_thresh  = n_clad / n_core;
 
-  // propagate optical photons in this copper
-  G4StepPoint *preStepPoint = step->GetPreStepPoint();
-  G4StepPoint *postStepPoint = step->GetPostStepPoint();
+  // Arrival time for both methods uses abs_pz, NOT cos(captureAngle_s).
+  // The axial speed is v_z = (c/n_core)*|pz| for any ray — skew or meridional.
+  // captureAngle_s is the incidence angle at the cylindrical wall, which is a
+  // different angle; cos(captureAngle_s) != |pz| for skew rays.
+  // The two arrival times differ only in which photons qualify (TIR condition),
+  // not in the propagation formula itself.
 
-  bool isCoreS = false;
-  bool isCoreC = false;
-  bool isCladS = false;
-  bool isCladC = false;
-  auto detname = track->GetTouchable()->GetVolume()->GetLogicalVolume()->GetName();
-  if (detname == "fiberCoreS")
-  {
-    isCoreS = true;
-  }
-  else if (detname == "fiberCoreC")
-  {
-    isCoreC = true;
-  }
-  else if (detname == "fiberCladS")
-  {
-    isCladS = true;
-  }
-  else if (detname == "fiberCladC")
-  {
-    isCladC = true;
-  }
+  // Total path length through the core along the ray (longer than z_travel for non-axial rays)
+  const double path_length = (abs_pz > 0.0) ? z_travel / abs_pz : DBL_MAX;
+  // Beer-Lambert survival probability: P = exp(-path / abs_len)
+  // Sample once and apply the same random decision to both methods so that
+  // isCaptured_m and isCaptured_s are comparable on a photon-by-photon basis.
+  const double survival_prob = std::exp(-path_length / abs_len);
+  const bool   survives      = (CLHEP::RandFlat::shoot() < survival_prob);
 
-  bool isGoingOutside = false;
-  if (postStepPoint->GetTouchableHandle()->GetVolume())
-  {
-    auto detname = postStepPoint->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
-    if (detname == "World" || detname == "Calorimeter")
-    {
-      isGoingOutside = true;
-    }
-  }
+  // Meridional: treats fiber as slab, ignores azimuthal angular momentum
+  photon.captureAngle_m = std::acos(std::min(abs_pz, 1.0));
+  photon.isCaptured_m   = (abs_pz >= tir_thresh);
+  photon.isAttenuated_m = photon.isCaptured_m && !survives;
+  if (photon.isCaptured_m && survives && abs_pz > 0.0)
+    photon.analyticalArrivalTime_m =
+        (global_time + z_travel * n_core / (CLHEP::c_light * abs_pz)) / ns;
 
-  int fiberIdx = 1;
-  if (isCladS || isCladC)
-  {
-    // Core is in "Clad"
-    // if already in clad, then the first volume is the clad, aka fiber id
-    fiberIdx = 0;
-  }
+  // Skew-ray: uses conserved z-angular momentum L_z = x*py - y*px.
+  // Wall incidence angle: sin(theta_wall) = sqrt(pz^2 + Lz^2/R^2) — used for TIR only.
+  // captureAngle_s stores alpha = acos(|pz|), same definition as captureAngle_m,
+  // because alpha is the angle that governs axial speed and travel time for both methods.
+  const double Lz         = pos.x() * pdir.y() - pos.y() * pdir.x();
+  const double sin_theta_wall = std::min(std::sqrt(pdir.z()*pdir.z() + Lz*Lz / (R_core*R_core)), 1.0);
+  photon.captureAngle_s = std::acos(std::min(abs_pz, 1.0)); // alpha, same as _m
+  photon.isCaptured_s   = (sin_theta_wall >= tir_thresh);
+  photon.isAttenuated_s = photon.isCaptured_s && !survives;
+  if (photon.isCaptured_s && survives && abs_pz > 0.0)
+    photon.analyticalArrivalTime_s =
+        (global_time + z_travel * n_core / (CLHEP::c_light * abs_pz)) / ns;
+}
 
-  if (isCoreC || isCoreS)
-  {
-    if (track->GetCurrentStepNumber() == 1)
-    {
-      auto *creatorProcess = track->GetCreatorProcess();
-      if (creatorProcess && creatorProcess->GetProcessName() == "Cerenkov")
-      {
-        hh->accumulateOPsCer(isCoreC, 1);
-      }
-    }
-  }
+void CaloXSteppingAction::initOptics()
+{
+  // Called lazily on the first step so that materials and volumes are guaranteed
+  // to exist (CaloXDetectorConstruction::Construct() has already run).
+  const G4double refEnergy = 3.0 * eV; // mid-visible; RINDEX tables are flat here
 
-  int fiberNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx);
-  int holeNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 1);
-  int rodNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 2);
-  int layerNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 3);
+  auto readRIndex = [&](const char *matName) -> double {
+    G4Material *mat = G4Material::GetMaterial(matName);
+    if (!mat)
+      G4Exception("CaloXSteppingAction::initOptics", "NoMaterial", FatalException,
+                  (G4String("Material not found: ") + matName).c_str());
+    G4MaterialPropertiesTable *mpt = mat->GetMaterialPropertiesTable();
+    if (!mpt)
+      G4Exception("CaloXSteppingAction::initOptics", "NoMPT", FatalException,
+                  (G4String("No MaterialPropertiesTable for: ") + matName).c_str());
+    return mpt->GetProperty("RINDEX")->Value(refEnergy);
+  };
 
-  double x = track->GetPosition().x() / cm;
-  double y = track->GetPosition().y() / cm;
-  // if ((!(isCoreS || isCoreC || isCladS || isCladC) || rodNumber != 45 || layerNumber != 40) && !isGoingOutside)
-  if (!(isCoreS || isCoreC || isCladS || isCladC) || rodNumber != 45 || layerNumber != 40)
-  {
-    // std::cout<<"Stepping Action:  optical photon outside the center"<<std::endl;
-    track->SetTrackStatus(fStopAndKill);
-    return;
-  }
+  fN_CoreS = readRIndex("Polystyrene");
+  fN_CladS = readRIndex("PMMA_Clad");
+  fN_CoreC = readRIndex("PMMA");
+  fN_CladC = readRIndex("Fluorinated_Polymer");
 
-  // if (fabs(x) > 1.0 || fabs(y) > 1.0)
-  //{
-  //   std::cout << "photon x" << x << "  y " << y << "  z " << track->GetPosition().z() / cm << " fiber Number " << fiberNumber << "  hole Number " << holeNumber << "  rod Number " << rodNumber << "  layer Number " << layerNumber << " isGoingOutside " << isGoingOutside << " isCoreS " << isCoreS << " isCladS " << isCladS << "isCoreC " << isCoreC << " isCladC " << isCladC << " preStep volume " << preStepPoint->GetTouchableHandle()->GetVolume()->GetName() << " postStep volume " << postStepPoint->GetTouchableHandle()->GetVolume()->GetName() << std::endl;
-  // }
+  // Read bulk absorption lengths (ABSLENGTH) at the same reference energy
+  auto readAbsLen = [&](const char *matName) -> double {
+    G4Material *mat = G4Material::GetMaterial(matName);
+    G4MaterialPropertiesTable *mpt = mat->GetMaterialPropertiesTable();
+    G4MaterialPropertyVector *vec = mpt->GetProperty("ABSLENGTH");
+    return vec ? vec->Value(refEnergy) : DBL_MAX; // no table → no attenuation
+  };
+  fAbsLen_CoreS = readAbsLen("Polystyrene");
+  fAbsLen_CoreC = readAbsLen("PMMA");
 
-  // Check if the photon is just created.
+  auto *coreVol = G4LogicalVolumeStore::GetInstance()->GetVolume("fiberCoreS");
+  if (!coreVol)
+    G4Exception("CaloXSteppingAction::initOptics", "NoVolume", FatalException,
+                "Logical volume fiberCoreS not found");
+  auto *coreTubs = dynamic_cast<G4Tubs *>(coreVol->GetSolid());
+  fR_Core     = coreTubs->GetOuterRadius();
+  fFiberHalfZ = coreTubs->GetZHalfLength();
+
+  std::cout << "Fiber optics (from material tables):\n"
+            << "  S-fiber: n_core=" << fN_CoreS << "  n_clad=" << fN_CladS
+            << "  abs_len=" << fAbsLen_CoreS/m << " m\n"
+            << "  C-fiber: n_core=" << fN_CoreC << "  n_clad=" << fN_CladC
+            << "  abs_len=" << fAbsLen_CoreC/m << " m\n"
+            << "  R_core=" << fR_Core/mm << " mm"
+            << "  half-z=" << fFiberHalfZ/cm << " cm" << std::endl;
+
+  fOpticsInitialised = true;
+}
+
+void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
+{
+  if (!fOpticsInitialised) initOptics();
+
+  // Optical constants read from material tables on first call
+  const double N_CORE_S     = fN_CoreS;
+  const double N_CLAD_S     = fN_CladS;
+  const double N_CORE_C     = fN_CoreC;
+  const double N_CLAD_C     = fN_CladC;
+  const double R_CORE       = fR_Core;
+  const double FIBER_HALF_Z = fFiberHalfZ;
+
+  G4Track      *track        = step->GetTrack();
+  G4StepPoint  *preStepPoint = step->GetPreStepPoint();
+  G4StepPoint  *postStepPoint = step->GetPostStepPoint();
+  const G4int   trackID      = track->GetTrackID();
+
+  // Identify fiber sub-volume
+  bool isCoreS = false, isCoreC = false, isCladS = false, isCladC = false;
+  const G4String detname =
+      track->GetTouchable()->GetVolume()->GetLogicalVolume()->GetName();
+  if      (detname == "fiberCoreS") isCoreS = true;
+  else if (detname == "fiberCoreC") isCoreC = true;
+  else if (detname == "fiberCladS") isCladS = true;
+  else if (detname == "fiberCladC") isCladC = true;
+  else { track->SetTrackStatus(fStopAndKill); return; }
+
+  const int fiberIdx  = (isCladS || isCladC) ? 0 : 1;
+  const int fiberNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx);
+  const int rodNumber   = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 2);
+  const int layerNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 3);
+
+  const bool isSampleRod = (rodNumber == opSampleRod && layerNumber == opSampleLayer);
+
+  // -----------------------------------------------------------------------
+  //  At photon birth: record info and compute analytical TIR for all rods.
+  //  For non-sample rods, kill immediately after — no further tracking needed.
+  // -----------------------------------------------------------------------
   if (track->GetCurrentStepNumber() == 1)
   {
-    G4ThreeVector productionPosition = preStepPoint->GetPosition();
-    G4double initialKineticEnergy = track->GetKineticEnergy();
-
-    // Add to photon data
-    PhotonInfo photon;
-    photon.trackID = trackID;
-    photon.productionPosition = productionPosition / cm;
-    photon.productionMomentum = track->GetMomentum() / GeV;
-    photon.productionTime = track->GetGlobalTime() / ns;
-    photon.polarization = track->GetPolarization();
-
-    auto *creatorProcess = track->GetCreatorProcess();
-    if (creatorProcess)
+    // Count Cerenkov photons born in core (all rods)
+    if (isCoreS || isCoreC)
     {
-      if (creatorProcess->GetProcessName() == "Cerenkov")
-      {
-        photon.isCerenkov = true;
-      }
-      else if (creatorProcess->GetProcessName() == "Scintillation")
-      {
-        photon.isScintillation = true;
-      }
+      auto *cp = track->GetCreatorProcess();
+      if (cp && cp->GetProcessName() == "Cerenkov")
+        hh->accumulateOPsCer(isCoreC, 1);
     }
 
-    photon.isCoreS = isCoreS;
-    photon.isCoreC = isCoreC;
-    photon.isCladS = isCladS;
-    photon.isCladC = isCladC;
+    // For non-sample rods, only core photons can be guided — skip clad-born photons
+    if (!isSampleRod && !(isCoreS || isCoreC))
+    {
+      track->SetTrackStatus(fStopAndKill);
+      return;
+    }
 
-    photon.productionFiber = fiberNumber;
+    // Build the photon record
+    CaloXPhotonInfo photon;
+    photon.trackID            = trackID;
+    photon.productionPosition = preStepPoint->GetPosition() / cm;
+    photon.productionMomentum = track->GetMomentum() / GeV;
+    photon.productionTime     = track->GetGlobalTime() / ns;
+    photon.polarization       = track->GetPolarization();
+    photon.isCoreS = isCoreS; photon.isCoreC = isCoreC;
+    photon.isCladS = isCladS; photon.isCladC = isCladC;
+    photon.productionFiber    = fiberNumber;
+    photon.productionRod      = rodNumber;
+    photon.productionLayer    = layerNumber;
+    auto *cp = track->GetCreatorProcess();
+    if (cp)
+    {
+      photon.isCerenkov      = (cp->GetProcessName() == "Cerenkov");
+      photon.isScintillation = (cp->GetProcessName() == "Scintillation");
+    }
 
-    // Save initial data, exit info will be filled later
+    // Analytical TIR for core photons (same logic, all rods)
+    if (isCoreS || isCoreC)
+    {
+      const double n_core = isCoreS ? N_CORE_S : N_CORE_C;
+      const double n_clad = isCoreS ? N_CLAD_S : N_CLAD_C;
+      const double abs_len = isCoreS ? fAbsLen_CoreS : fAbsLen_CoreC;
+      computeAnalyticalTIR(photon,
+                           track->GetMomentumDirection(),
+                           preStepPoint->GetPosition(),
+                           n_core, n_clad, R_CORE, FIBER_HALF_Z,
+                           track->GetGlobalTime(), abs_len);
+    }
+
     hh->photonData.push_back(photon);
+
+    if (!isSampleRod)
+    {
+      track->SetTrackStatus(fStopAndKill);
+      return;
+    }
   }
 
-  // Check if the photon is leaving the detector to the world
-  if (isGoingOutside)
+  // -----------------------------------------------------------------------
+  //  Sample rod only: update exit info when photon leaves the fiber
+  // -----------------------------------------------------------------------
+  if (postStepPoint->GetTouchableHandle()->GetVolume())
   {
-    G4ThreeVector exitPosition = postStepPoint->GetPosition();
-    G4ThreeVector exitMomentum = track->GetMomentum();
-
-    // Find the photon in the container and update its exit information
-    for (auto &photon : hh->photonData)
+    const G4String exitName =
+        postStepPoint->GetTouchableHandle()->GetVolume()->GetLogicalVolume()->GetName();
+    if (exitName == "World" || exitName == "Calorimeter")
     {
-      if (photon.trackID == trackID)
+      for (auto &photon : hh->photonData)
       {
-        // std::cout << "Photon " << trackID << " found in container. Updating exit info. Left x " << exitPosition.x() << " y " << exitPosition.y() << " z " << exitPosition.z() << std::endl;
-        photon.exitPosition = exitPosition / cm;
-        photon.exitMomentum = exitMomentum / GeV;
-        photon.exitTime = track->GetGlobalTime() / ns;
-        // photon.exitFiber = preStepPoint->GetTouchable()->GetVolume()->GetCopyNo();
-
+        if (photon.trackID != trackID) continue;
+        photon.exitPosition = postStepPoint->GetPosition() / cm;
+        photon.exitMomentum = track->GetMomentum() / GeV;
+        photon.exitTime     = track->GetGlobalTime() / ns;
         if (verbose)
-        {
-          std::cout << "Photon arriving at the end. Touchable name " << preStepPoint->GetTouchable()->GetVolume()->GetName() << " copy number " << preStepPoint->GetTouchable()->GetVolume()->GetCopyNo() << " depth " << preStepPoint->GetTouchable()->GetHistory()->GetDepth() << " vol1 number " << preStepPoint->GetTouchable()->GetCopyNumber(1) << " vol2 number " << preStepPoint->GetTouchable()->GetCopyNumber(2) << " vol3 number " << preStepPoint->GetTouchable()->GetCopyNumber(3) << " vol4 number " << preStepPoint->GetTouchable()->GetCopyNumber(4) << " vol5 number " << preStepPoint->GetTouchable()->GetCopyNumber(5) << " x " << preStepPoint->GetPosition().x() / cm << " y " << preStepPoint->GetPosition().y() / cm << " z " << preStepPoint->GetPosition().z() / cm << std::endl;
-        }
-
+          std::cout << "Sample-rod photon exit z="
+                    << preStepPoint->GetPosition().z() / cm << " cm" << std::endl;
         break;
       }
     }
   }
 }
+

@@ -3,7 +3,9 @@
 #$$$ runSeq     00
 #$$$ runConfig    Test    (string camera number and (rock,air, air) in (cairn, chamber, passage)
 #$$$ numberOfEvents   1
-#$$$ eventsInNtupe     5     (maximum number of events in ntuple output file)
+#$$$ eventsInNtuple     1     (maximum number of events in ntuple output file)
+#$$$ opSampleRod      45    (rod index for optical photon tracking; default=45)
+#$$$ opSampleLayer    40    (layer index for optical photon tracking; default=40)
 
 #$$$ rootPre       mc      (file name will be Pre+runName+runNumber+runSeq+runConfig+NoE.root)
 #$$$ createNtuple  true    (true or false))

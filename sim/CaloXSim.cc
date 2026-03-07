@@ -1,31 +1,5 @@
-//
-// ********************************************************************
-// * License and Disclaimer                                           *
-// *                                                                  *
-// * The  Geant4 software  is  copyright of the Copyright Holders  of *
-// * the Geant4 Collaboration.  It is provided  under  the terms  and *
-// * conditions of the Geant4 Software License,  included in the file *
-// * LICENSE and available at  http://cern.ch/geant4/license .  These *
-// * include a list of copyright holders.                             *
-// *                                                                  *
-// * Neither the authors of this software system, nor their employing *
-// * institutes,nor the agencies providing financial support for this *
-// * work  make  any representation or  warranty, express or implied, *
-// * regarding  this  software system or assume any liability for its *
-// * use.  Please see the license in the file  LICENSE  and URL above *
-// * for the full disclaimer and the limitation of liability.         *
-// *                                                                  *
-// * This  code  implementation is the result of  the  scientific and *
-// * technical work of the GEANT4 collaboration.                      *
-// * By using,  copying,  modifying or  distributing the software (or *
-// * any work based  on the software)  you  agree  to acknowledge its *
-// * use  in  resulting  scientific  publications,  and indicate your *
-// * acceptance of all terms of the Geant4 Software license.          *
-// ********************************************************************
-//
-//
-/// \file exampleB4b.cc
-/// \brief Main program of the B4b example
+/// \file exampleCaloX.cc
+/// \brief Main program of the CaloX example
 
 // #include "G4RunManagerFactory.hh"
 #include "G4RunManager.hh"
@@ -38,23 +12,24 @@
 #include "G4OpticalPhysics.hh"
 // #include "G4Cerenkov.hh"
 #include "Randomize.hh"
+#include <chrono>
 
 #include "G4HadronicProcess.hh"
 #include "G4GammaGeneralProcess.hh"
 
-#include "B4DetectorConstruction.hh"
-#include "B4PrimaryGeneratorAction.hh"
-#include "B4bRunAction.hh"
-#include "B4bEventAction.hh"
-#include "B4bSteppingAction.hh"
+#include "CaloXDetectorConstruction.hh"
+#include "CaloXPrimaryGeneratorAction.hh"
+#include "CaloXRunAction.hh"
+#include "CaloXEventAction.hh"
+#include "CaloXSteppingAction.hh"
+#include "CaloXTrackingAction.hh"
 
 #include "G4VisExecutive.hh"
 #include "G4UIExecutive.hh"
 
-#include "CaloTree.h"
-#include "B4bPhysicsList.hh"
+#include "CaloXTree.h"
+#include "CaloXPhysicsList.hh"
 
-#
 using namespace std;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -86,7 +61,7 @@ int main(int argc, char **argv)
     }
   }
 
-  CaloTree *histo = new CaloTree(macro, argc, argv);
+  CaloXTree *histo = new CaloXTree(macro, argc, argv);
 
   G4UIExecutive *ui = nullptr;
   if (!batchJob)
@@ -98,19 +73,15 @@ int main(int argc, char **argv)
   //
   G4Random::setTheEngine(new CLHEP::RanecuEngine);
 
-  // Generate rndom number seeds;
+  // Generate time-based random seeds so each run is statistically independent
+  auto now = std::chrono::system_clock::now();
+  auto micros = std::chrono::duration_cast<std::chrono::microseconds>(
+                    now.time_since_epoch())
+                    .count();
+  long long t1 = micros / 1000000LL;
+  long long t2 = micros % 1000000LL;
+  std::cout << "Time-based seed components: t1=" << t1 << "   t2=" << t2 << std::endl;
   long seeds[2];
-  // std::chrono::system_clock::time_point now=std::chrono::system_clock::now();
-  // auto duration = now.time_since_epoch();
-  // auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-  // long long  micros = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
-  // std::cout<<"millis "<<millis <<std::endl;
-  // std::cout<<"micros "<<micros <<std::endl;
-  // long long t1=micros/10000000;
-  // long long t2=micros-t1*10000000;
-  long long t1 = 1234;
-  long long t2 = 456;
-  std::cout << "t1=" << t1 << "   t2=" << t2 << std::endl;
   int kseed = histo->getParamI("runNumber") + histo->getParamI("runSeq") * 3333;
   seeds[0] = long(t2) + long(kseed);
   seeds[1] = seeds[0] + 8134;
@@ -130,15 +101,16 @@ int main(int argc, char **argv)
 
   // Set mandatory initialization classes
   //
-  auto detector = new B4DetectorConstruction(histo);
+  auto detector = new CaloXDetectorConstruction(histo);
   runManager->SetUserInitialization(detector);
 
   //   optical physics from examples/extended/optical/OpNovice2
   //  auto physicsList = new FTFP_BERT;
+  // Use QGSP_BERT as the base physics list.
+  // CaloXPhysicsList (defined in include/CaloXPhysicsList.hh) extends QGSP_BERT
+  // by removing the photonNuclear process; switch to it if that suppression is needed.
   auto physicsList = new QGSP_BERT;
-  // auto physicsList = new QBBC;
-  //  auto physicsList = new PhysListEmStandard();
-  //   auto physicsList = new CustomPhysicsList();
+  // auto physicsList = new CaloXPhysicsList();
 
   // physicsList->ReplacePhysics(new G4EmStandardPhysics_option4());
   G4OpticalPhysics *opticalPhysics = new G4OpticalPhysics();
@@ -152,56 +124,29 @@ int main(int argc, char **argv)
   // theCerenkovProcess->SetMaxNumPhotonsPerStep(MaxNumberPhotons);
   // physicsList->RegisterPhysics(theCerenkovProcess);
 
-  auto gen_action = new B4PrimaryGeneratorAction(detector, histo);
+  auto gen_action = new CaloXPrimaryGeneratorAction(detector, histo);
   runManager->SetUserAction(gen_action);
 
-  auto run_action = new B4bRunAction(histo);
+  auto run_action = new CaloXRunAction(histo);
   runManager->SetUserAction(run_action);
   //
-  auto event_action = new B4bEventAction(detector, gen_action, histo);
+  auto event_action = new CaloXEventAction(detector, gen_action, histo);
   runManager->SetUserAction(event_action);
   //
-  auto stepping_action = new B4bSteppingAction(event_action, histo);
+  auto stepping_action = new CaloXSteppingAction(event_action, histo);
   runManager->SetUserAction(stepping_action);
+  //
+  auto tracking_action = new CaloXTrackingAction();
+  runManager->SetUserAction(tracking_action);
 
   // runManager->SetNumberOfThreads(4);
   runManager->Initialize();
-  // auto actionInitialization = new B4bActionInitialization(detConstruction);
+  // auto actionInitialization = new CaloXActionInitialization(detConstruction);
   // runManager->SetUserInitialization(actionInitialization);
 
   // Initialize visualization
   auto visManager = new G4VisExecutive;
   visManager->Initialize();
-
-  if (0)
-  {
-    // Get the photon (gamma) particle definition
-    G4ParticleDefinition *gamma = G4Gamma::GammaDefinition();
-    G4ProcessManager *pmanager = gamma->GetProcessManager();
-    std::cout << "pmanager=" << pmanager << std::endl;
-    if (pmanager)
-    {
-      G4int nprocesses = pmanager->GetProcessListLength();
-      std::cout << "nprocesses=" << nprocesses << std::endl;
-      for (G4int i = 0; i < nprocesses; i++)
-      {
-        G4VProcess *process = (*pmanager->GetProcessList())[i];
-        std::cout << "process name: " << process->GetProcessName() << std::endl;
-
-        if (process->GetProcessName() == "GammaGeneralProc")
-        {
-          if (dynamic_cast<G4GammaGeneralProcess *>(process))
-          {
-            // https://github.com/Geant4/geant4/blob/v11.2.2/source/physics_lists/constructors/electromagnetic/include/G4GammaGeneralProcess.hh#L78
-            // and https://github.com/Geant4/geant4/blob/v11.2.2/source/physics_lists/constructors/electromagnetic/src/G4GammaGeneralProcess.cc#L619
-            ((G4GammaGeneralProcess *)process)->AddHadProcess(nullptr);
-            std::cout << "Set hadronic process of gamma to null" << std::endl;
-          }
-        }
-      }
-    }
-    std::cout << "done" << std::endl;
-  }
 
   // Get the pointer to the User Interface manager
   auto UImanager = G4UImanager::GetUIpointer();
@@ -216,7 +161,7 @@ int main(int argc, char **argv)
     cout << "command: " << command << endl;
     UImanager->ApplyCommand(command + macro); // macro does not have /run/beamOn 100
 
-    //    beams are now defined in B4PrimaryGeneratorAction...
+    //    beams are now defined in CaloXPrimaryGeneratorAction...
     // command="/gun/particle "+histo->getParamS("gun_particle");
     // cout<<"command: "<<command<<endl;
     // UImanager->ApplyCommand(command);

@@ -1,33 +1,7 @@
-//
-// ********************************************************************
-// * License and Disclaimer                                           *
-// *                                                                  *
-// * The  Geant4 software  is  copyright of the Copyright Holders  of *
-// * the Geant4 Collaboration.  It is provided  under  the terms  and *
-// * conditions of the Geant4 Software License,  included in the file *
-// * LICENSE and available at  http://cern.ch/geant4/license .  These *
-// * include a list of copyright holders.                             *
-// *                                                                  *
-// * Neither the authors of this software system, nor their employing *
-// * institutes,nor the agencies providing financial support for this *
-// * work  make  any representation or  warranty, express or implied, *
-// * regarding  this  software system or assume any liability for its *
-// * use.  Please see the license in the file  LICENSE  and URL above *
-// * for the full disclaimer and the limitation of liability.         *
-// *                                                                  *
-// * This  code  implementation is the result of  the  scientific and *
-// * technical work of the GEANT4 collaboration.                      *
-// * By using,  copying,  modifying or  distributing the software (or *
-// * any work based  on the software)  you  agree  to acknowledge its *
-// * use  in  resulting  scientific  publications,  and indicate your *
-// * acceptance of all terms of the Geant4 Software license.          *
-// ********************************************************************
-//
-//
-/// \file B4DetectorConstruction.cc
-/// \brief Implementation of the B4DetectorConstruction class
+/// \file CaloXDetectorConstruction.cc
+/// \brief Implementation of the CaloXDetectorConstruction class
 
-#include "B4DetectorConstruction.hh"
+#include "CaloXDetectorConstruction.hh"
 
 #include "G4Material.hh"
 #include "G4NistManager.hh"
@@ -52,16 +26,17 @@
 
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
+#include <cmath>
 
-#include "CaloTree.h"
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
-G4ThreadLocal G4GlobalMagFieldMessenger *B4DetectorConstruction::fMagFieldMessenger = nullptr;
+#include "CaloXTree.h"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-B4DetectorConstruction::B4DetectorConstruction(CaloTree *histo)
+G4ThreadLocal G4GlobalMagFieldMessenger *CaloXDetectorConstruction::fMagFieldMessenger = nullptr;
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+CaloXDetectorConstruction::CaloXDetectorConstruction(CaloXTree *histo)
     : G4VUserDetectorConstruction(),
       hh(histo),
       fCheckOverlaps(true)
@@ -70,13 +45,13 @@ B4DetectorConstruction::B4DetectorConstruction(CaloTree *histo)
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-B4DetectorConstruction::~B4DetectorConstruction()
+CaloXDetectorConstruction::~CaloXDetectorConstruction()
 {
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4VPhysicalVolume *B4DetectorConstruction::Construct()
+G4VPhysicalVolume *CaloXDetectorConstruction::Construct()
 {
     // Define materials
     DefineMaterials();
@@ -87,9 +62,8 @@ G4VPhysicalVolume *B4DetectorConstruction::Construct()
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void B4DetectorConstruction::DefineMaterials()
+void CaloXDetectorConstruction::DefineMaterials()
 {
-    std::cout << "B4DetectorConstruction::DefineMaterials()... start..." << std::endl;
     // Lead material defined using NIST Manager
     auto nistManager = G4NistManager::Instance();
     nistManager->FindOrBuildMaterial("G4_Fe");
@@ -102,7 +76,6 @@ void B4DetectorConstruction::DefineMaterials()
     nistManager->FindOrBuildMaterial("G4_U");
     nistManager->FindOrBuildMaterial("G4_AIR");
 
-    std::cout << "B4DetectorConstruction::DefineMaterials()... start2..." << std::endl;
 
     // (PolyVinylToluene, C_9H_10)
     nistManager->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE");
@@ -120,21 +93,18 @@ void B4DetectorConstruction::DefineMaterials()
     G4double z; // z=mean number of protons;
     G4double density;
 
-    std::cout << "B4DetectorConstruction::DefineMaterials()... start4..." << std::endl;
     // Vacuum
     new G4Material("Galactic", z = 1., a = 1.01 * g / mole, density = universe_mean_density,
                    kStateGas, 2.73 * kelvin, 3.e-18 * pascal);
 
     // Print materials
     // std::cout << *(G4Material::GetMaterialTable()) << std::endl;
-    std::cout << "B4DetectorConstruction::DefineMaterials()... end..." << std::endl;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-G4VPhysicalVolume *B4DetectorConstruction::DefineVolumes()
+G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
 {
-    std::cout << "B4DetectorConstruction::DefineVolumes()...  starts..." << std::endl;
     // Geometry structure
     //   World                  Air
     //     - Calo               Air
@@ -161,7 +131,7 @@ G4VPhysicalVolume *B4DetectorConstruction::DefineVolumes()
     //   chts[100]
     //
     // Geometry parameters
-    double fiberLength = 200.0 * cm;
+    double fiberLength = 250.0 * cm;
     double holeDiameter = 0.25 * cm;
     double rodSize = 0.4 * cm;
     double noLayers = 80.0;
@@ -172,12 +142,14 @@ G4VPhysicalVolume *B4DetectorConstruction::DefineVolumes()
     double calorSizeY = rodSize * noLayers;
     double calorSizeZ = fiberLength;
 
-    double worldSizeX = 1.4 * calorSizeX;
-    double worldSizeY = 1.4 * calorSizeY;
-    double worldSizeZ = 1.2 * calorSizeZ;
-
-    double density;
-    int ncomponentsbrass;
+    // Use the calorimeter's space diagonal as the world half-size so that
+    // any rotation (including 90° around Y) is always fully contained.
+    double calorDiag  = std::sqrt(calorSizeX*calorSizeX +
+                                  calorSizeY*calorSizeY +
+                                  calorSizeZ*calorSizeZ);
+    double worldSizeX = 1.2 * calorDiag;
+    double worldSizeY = 1.2 * calorDiag;
+    double worldSizeZ = 1.2 * calorDiag;
 
     //
     // World
@@ -216,11 +188,8 @@ G4VPhysicalVolume *B4DetectorConstruction::DefineVolumes()
 
     G4NistManager *nistManager = G4NistManager::Instance();
 
-    G4String name, symbol; // a=mass of a mole;
-    G4double a, z;         // z=mean number of protons;
     G4int ncomponents, natoms;
-    G4double abundance, fractionmass;
-    G4Material *cu = new G4Material("Copper", z = 29., a = 63.546 * g / mole, density = 8.96 * g / cm3);
+    // Elements for fiber materials
     G4Element *H = nistManager->FindOrBuildElement(1);
     G4Element *C = nistManager->FindOrBuildElement(6);
     G4Element *N = nistManager->FindOrBuildElement(7);
@@ -277,7 +246,7 @@ G4VPhysicalVolume *B4DetectorConstruction::DefineVolumes()
                           rodSize / 2.0, rodSize / 2.0, calorSizeZ / 2.); // its size
 
     auto rodLV = new G4LogicalVolume(
-        layerS,        // its solid
+        rodS,          // its solid  [FIXED: was layerS — wrong geometry]
         calorMaterial, // its material
         "Rod");        // its name
 
@@ -318,6 +287,7 @@ G4VPhysicalVolume *B4DetectorConstruction::DefineVolumes()
     //
 
     ///--- for scintillation fiber core ---
+    double density;
     G4Material *polystyrene =
         new G4Material("Polystyrene", density = 1.05 * g / cm3, ncomponents = 2);
     polystyrene->AddElement(C, natoms = 8);
@@ -363,11 +333,11 @@ G4VPhysicalVolume *B4DetectorConstruction::DefineVolumes()
     //--- PMMA ---
     G4double RefractiveIndex_PMMA[nEntries] =
         {
-            1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49,
-            1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49,
-            1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49,
-            1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49,
-            1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49, 1.49};
+            1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468,
+            1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468,
+            1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468,
+            1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468,
+            1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468};
     mpPMMA = new G4MaterialPropertiesTable();
     mpPMMA->AddProperty("RINDEX", PhotonEnergy, RefractiveIndex_PMMA, nEntries);
 
@@ -504,7 +474,6 @@ G4VPhysicalVolume *B4DetectorConstruction::DefineVolumes()
     fiberSLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.0, 0.5, 0.8, 0.9)));       // red
     fiberCoreSLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.0, 0.98, 0.98, 0.9))); // red
 
-    std::cout << "B4DetectorConstruction::DefineVolumes()...  ends..." << std::endl;
     //
     // Always return the physical World
     //
@@ -513,9 +482,8 @@ G4VPhysicalVolume *B4DetectorConstruction::DefineVolumes()
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void B4DetectorConstruction::ConstructSDandField()
+void CaloXDetectorConstruction::ConstructSDandField()
 {
-    std::cout << "B4DetectorConstruction::ConstructSDandField()... starts..." << std::endl;
     // Create global magnetic field messenger.
     // Uniform magnetic field is then created automatically if
     // the field value is not zero.
@@ -525,7 +493,6 @@ void B4DetectorConstruction::ConstructSDandField()
 
     // Register the field messenger for deleting
     G4AutoDelete::Register(fMagFieldMessenger);
-    std::cout << "B4DetectorConstruction::ConstructSDandField()... ends..." << std::endl;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

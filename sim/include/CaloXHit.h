@@ -1,20 +1,20 @@
-#ifndef CaloHit_h
-#define CaloHit_h 1
+#ifndef CaloXHit_h
+#define CaloXHit_h 1
 
 #include <vector>
 
-#include "CaloID.h"
+#include "CaloXID.h"
 #include "G4String.hh"
 
-class CaloHit
+class CaloXHit
 {
 public:
-   CaloHit();
-   ~CaloHit();
+   CaloXHit();
+   ~CaloXHit();
 
    void print();
 
-   CaloID caloid;
+   CaloXID caloid;
    int pid;
    int trackid;
    int calotype;

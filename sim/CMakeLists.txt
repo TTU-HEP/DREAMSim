@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.8...3.18)
 if(${CMAKE_VERSION} VERSION_LESS 3.12)
   cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 endif()
-project(B4b)
+project(CaloX)
 
 #----------------------------------------------------------------------------
 # Find Geant4 package, activating all available UI and Vis drivers by default
@@ -50,16 +50,16 @@ file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 #----------------------------------------------------------------------------
 # Add the executable, and link it to the Geant4 libraries
 #
-add_executable(exampleB4b exampleB4b.cc ${sources} ${headers})
-target_link_libraries(exampleB4b ${Geant4_LIBRARIES})
-target_link_libraries(exampleB4b ${ROOT_LIBRARIES})
+add_executable(CaloXSim CaloXSim.cc ${sources} ${headers})
+target_link_libraries(CaloXSim ${Geant4_LIBRARIES})
+target_link_libraries(CaloXSim ${ROOT_LIBRARIES})
 
 #----------------------------------------------------------------------------
 # Copy all scripts to the build directory, i.e. the directory in which we
-# build B4b. This is so that we can run the executable directly because it
+# build CaloX. This is so that we can run the executable directly because it
 # relies on these scripts being in the current working directory.
 #
-set(EXAMPLEB4B_SCRIPTS
+set(EXAMPLECALOX_SCRIPTS
   gui.mac
   init_vis.mac
   run1.mac
@@ -72,7 +72,7 @@ set(EXAMPLEB4B_SCRIPTS
   )
 
 
-foreach(_script ${EXAMPLEB4B_SCRIPTS})
+foreach(_script ${EXAMPLECALOX_SCRIPTS})
   configure_file(
     ${PROJECT_SOURCE_DIR}/${_script}
     ${PROJECT_BINARY_DIR}/${_script}
@@ -83,4 +83,4 @@ endforeach()
 #----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
-install(TARGETS exampleB4b DESTINATION bin)
+install(TARGETS CaloXSim DESTINATION bin)

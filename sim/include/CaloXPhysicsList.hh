@@ -2,11 +2,11 @@
 #include "G4Gamma.hh"
 #include "G4ProcessManager.hh"
 
-class CustomPhysicsList : public QGSP_BERT
+class CaloXPhysicsList : public QGSP_BERT
 {
 public:
-    CustomPhysicsList() : QGSP_BERT() {}
-    ~CustomPhysicsList() {}
+    CaloXPhysicsList() : QGSP_BERT() {}
+    ~CaloXPhysicsList() {}
 
     void ConstructProcess() override
     {

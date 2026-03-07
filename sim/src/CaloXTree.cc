@@ -1,4 +1,4 @@
-#include "CaloTree.h"
+#include "CaloXTree.h"
 
 #include <chrono>  // from std::
 #include <cstdlib> // for rand() on archer.
@@ -23,17 +23,17 @@
 #include "TTree.h"
 #include <numeric>
 
-#include "CaloHit.h"
-#include "CaloID.h"
-#include "PhotonInfo.h"
+#include "CaloXHit.h"
+#include "CaloXID.h"
+#include "CaloXPhotonInfo.h"
 
 using namespace std;
 
 // ------------------------------------------------------------------
 
-CaloTree::CaloTree(string macFileName, int argc, char **argv)
+CaloXTree::CaloXTree(string macFileName, int argc, char **argv)
 {
-  cout << "initializing CaloTree...   macFileName:" << macFileName << endl;
+  cout << "initializing CaloXTree...   macFileName:" << macFileName << endl;
 
   readMacFile(macFileName);
 
@@ -42,10 +42,27 @@ CaloTree::CaloTree(string macFileName, int argc, char **argv)
   {
     if (string(argv[i]) == "-b" || string(argv[i]) == "-i")
       continue;
+    if (i + 1 >= argc) {
+      std::cout << "CaloXTree: WARNING: flag '" << argv[i]
+                << "' has no value — ignoring." << std::endl;
+      break;
+    }
     string a = argv[i];
     string b = argv[i + 1];
     setParam(a.substr(1, a.size() - 1), b);
   }
+
+  // Print final effective parameter values after all overrides
+  std::cout << "\n=== Final parameters (after command-line overrides) ===" << std::endl;
+  std::cout << "  numberOfEvents : " << getParamS("numberOfEvents") << std::endl;
+  std::cout << "  eventsInNtuple : " << getParamS("eventsInNtuple") << std::endl;
+  std::cout << "  jobName        : " << getParamS("jobName")        << std::endl;
+  std::cout << "  runNumber      : " << getParamS("runNumber")      << std::endl;
+  std::cout << "  gun_particle   : " << getParamS("gun_particle",  false, "(default)") << std::endl;
+  std::cout << "  gun_energy_min : " << getParamS("gun_energy_min",false, "(default)") << std::endl;
+  std::cout << "  gun_energy_max : " << getParamS("gun_energy_max",false, "(default)") << std::endl;
+  std::cout << "  sipmType       : " << getParamS("sipmType",      false, "(default)") << std::endl;
+  std::cout << "======================================================\n" << std::endl;
 
   runConfig = getParamS("runConfig");
   runNumber = getParamI("runNumber");
@@ -272,6 +289,8 @@ CaloTree::CaloTree(string macFileName, int argc, char **argv)
   tree->Branch("OP_isCerenkov", &mP_isCerenkov);
   tree->Branch("OP_isScintillation", &mP_isScintillation);
   tree->Branch("OP_productionFiber", &mP_productionFiber);
+  tree->Branch("OP_productionRod",   &mP_productionRod);
+  tree->Branch("OP_productionLayer", &mP_productionLayer);
   tree->Branch("OP_finalFiber", &mP_finalFiber);
   tree->Branch("OP_isCoreC", &mP_isCoreC);
   tree->Branch("OP_isCoreS", &mP_isCoreS);
@@ -284,25 +303,36 @@ CaloTree::CaloTree(string macFileName, int argc, char **argv)
   tree->Branch("nOPsCer", &mP_nOPsCer);
   tree->Branch("nOPsCer_Cer", &mP_nOPsCer_Cer);
   tree->Branch("nOPsCer_Sci", &mP_nOPsCer_Sci);
+
+  // Meridional (pz-only) analytical result
+  tree->Branch("OP_isCaptured_m",            &mP_isCaptured_m);
+  tree->Branch("OP_isAttenuated_m",          &mP_isAttenuated_m);
+  tree->Branch("OP_captureAngle_m",          &mP_captureAngle_m);
+  tree->Branch("OP_analyticalArrivalTime_m", &mP_analyticalArrivalTime_m);
+  // Skew-corrected (L_z) analytical result
+  tree->Branch("OP_isCaptured_s",            &mP_isCaptured_s);
+  tree->Branch("OP_isAttenuated_s",          &mP_isAttenuated_s);
+  tree->Branch("OP_captureAngle_s",          &mP_captureAngle_s);
+  tree->Branch("OP_analyticalArrivalTime_s", &mP_analyticalArrivalTime_s);
 }
 
 // ########################################################################
-CaloTree::~CaloTree() { std::cout << "deleting CaloTree..." << std::endl; }
+CaloXTree::~CaloXTree() { std::cout << "deleting CaloXTree..." << std::endl; }
 
 // ########################################################################
-void CaloTree::BeginEvent()
+void CaloXTree::BeginEvent()
 {
   // This is clled from PrimaryGeneratorAction::GeneratePrimaries,
-  // not from B4aEventAction..
-  // clearCaloHits();
-  clearCaloTree();
+  // not from CaloXEventAction..
+  // clearCaloXHits();
+  clearCaloXTree();
 }
 
 // ########################################################################
-void CaloTree::EndEvent()
+void CaloXTree::EndEvent()
 {
 
-  // std::cout<<"CaloTree::EndEvent()  starting..."<<std::endl;
+  // std::cout<<"CaloXTree::EndEvent()  starting..."<<std::endl;
   eventCountsALL = eventCountsALL + 1;
   eventCounts = eventCounts + 1;
   mEvent = eventCounts;
@@ -310,7 +340,7 @@ void CaloTree::EndEvent()
   m_run = 1;
   m_event = eventCounts;
 
-  if ((eventCounts - 1) < getParamI("eventsInNtupe"))
+  if ((eventCounts - 1) < getParamI("eventsInNtuple"))
   {
     m_beamMinE = getParamF("gun_energy_min", false, -1.0);
     m_beamMaxE = getParamF("gun_energy_max", false, -1.0);
@@ -340,7 +370,7 @@ void CaloTree::EndEvent()
     m_sum3dCC = 0.0;
     for (auto itr = ctHits.begin(); itr != ctHits.end(); itr++)
     {
-      CaloID id(itr->first);
+      CaloXID id(itr->first);
       int area = id.area(); // 0=Al-block, 1=no-SiPM, 2=6mm, 3=3mm
       if (area < 2)
         continue;
@@ -371,7 +401,7 @@ void CaloTree::EndEvent()
     m_sum3dSS = 0.0;
     for (auto itr = stHits.begin(); itr != stHits.end(); itr++)
     {
-      CaloID id(itr->first);
+      CaloXID id(itr->first);
       int area = id.area(); // 0=Al-block, 1=no-SiPM, 2=6mm, 3=3mm
       if (area < 2)
         continue;
@@ -422,6 +452,8 @@ void CaloTree::EndEvent()
       mP_isCerenkov.push_back(photon.isCerenkov);
       mP_isScintillation.push_back(photon.isScintillation);
       mP_productionFiber.push_back(photon.productionFiber);
+      mP_productionRod.push_back(photon.productionRod);
+      mP_productionLayer.push_back(photon.productionLayer);
       mP_finalFiber.push_back(photon.exitFiber);
       mP_isCoreC.push_back(photon.isCoreC);
       mP_isCoreS.push_back(photon.isCoreS);
@@ -430,6 +462,14 @@ void CaloTree::EndEvent()
       mP_pol_x.push_back(photon.polarization.x());
       mP_pol_y.push_back(photon.polarization.y());
       mP_pol_z.push_back(photon.polarization.z());
+      mP_isCaptured_m.push_back(photon.isCaptured_m ? 1 : 0);
+      mP_isAttenuated_m.push_back(photon.isAttenuated_m ? 1 : 0);
+      mP_captureAngle_m.push_back(photon.captureAngle_m);
+      mP_analyticalArrivalTime_m.push_back(photon.analyticalArrivalTime_m);
+      mP_isCaptured_s.push_back(photon.isCaptured_s ? 1 : 0);
+      mP_isAttenuated_s.push_back(photon.isAttenuated_s ? 1 : 0);
+      mP_captureAngle_s.push_back(photon.captureAngle_s);
+      mP_analyticalArrivalTime_s.push_back(photon.analyticalArrivalTime_s);
 
       // std::cout << "Propagation length in z " << photon.exitPosition.z() - photon.productionPosition.z() << " speed " << (photon.exitTime - photon.productionTime) / (photon.exitPosition.z() - photon.productionPosition.z()) << " costheta " << photon.productionMomentum.z() / photon.productionMomentum.mag() << std::endl;
     }
@@ -439,20 +479,20 @@ void CaloTree::EndEvent()
     tree->Fill();
     std::cout << "Look into energy deposition in the calorimeter..." << std::endl;
     std::cout << "  eCalo=" << m_eCalotruth << "  eWorld=" << m_eWorldtruth << "  eLeak=" << m_eLeaktruth << "  eInvisible=" << m_eInvisible << "  eRod=" << m_eRodtruth << "  eCen=" << m_eCentruth << "  eScin=" << m_eScintruth << " eCalo+eWorld+eLeak+eInvisible=" << (m_eCalotruth + m_eWorldtruth + m_eLeaktruth + m_eInvisible) << std::endl;
-  } //  end of if((eventCounts-1)<getParamI("eventsInNtupe"))
+  } //  end of if((eventCounts-1)<getParamI("eventsInNtuple"))
 
   //   analyze this event.
   analyze();
 }
 
 // ########################################################################
-void CaloTree::EndJob()
+void CaloXTree::EndJob()
 {
   fout->Write();
   fout->Close();
 }
 // ########################################################################
-void CaloTree::saveBeamXYZEPxPyPz(string ptype, int pdgid, float x, float y, float z,
+void CaloXTree::saveBeamXYZEPxPyPz(string ptype, int pdgid, float x, float y, float z,
                             float en, float px, float py, float pz)
 {
   beamType = ptype; // sting pi+. e+ mu+ etc.
@@ -469,7 +509,7 @@ void CaloTree::saveBeamXYZEPxPyPz(string ptype, int pdgid, float x, float y, flo
 }
 
 // ########################################################################
-void CaloTree::clearCaloTree()
+void CaloXTree::clearCaloXTree()
 {
   rtHits.clear();
   stHits.clear();
@@ -575,6 +615,8 @@ void CaloTree::clearCaloTree()
   mP_isCerenkov.clear();
   mP_isScintillation.clear();
   mP_productionFiber.clear();
+  mP_productionRod.clear();
+  mP_productionLayer.clear();
   mP_finalFiber.clear();
   mP_isCoreC.clear();
   mP_isCoreS.clear();
@@ -583,6 +625,14 @@ void CaloTree::clearCaloTree()
   mP_pol_x.clear();
   mP_pol_y.clear();
   mP_pol_z.clear();
+  mP_isCaptured_m.clear();
+  mP_isAttenuated_m.clear();
+  mP_captureAngle_m.clear();
+  mP_analyticalArrivalTime_m.clear();
+  mP_isCaptured_s.clear();
+  mP_isAttenuated_s.clear();
+  mP_captureAngle_s.clear();
+  mP_analyticalArrivalTime_s.clear();
 
   mP_nOPsCer = 0;
   mP_nOPsCer_Cer = 0;
@@ -591,7 +641,7 @@ void CaloTree::clearCaloTree()
 
 
 // ########################################################################
-void CaloTree::accumulateHits(CaloHit ah)
+void CaloXTree::accumulateHits(CaloXHit ah)
 {
   if (saveTruthHits && ah.edep >= 1.0e-6 && (ah.calotype > 1 || (isMuon && ah.calotype == 1)))
   {
@@ -618,7 +668,7 @@ void CaloTree::accumulateHits(CaloHit ah)
     m_fiberNumber.push_back(ah.fiberNumber);
   }
 
-  CaloID id = ah.caloid;
+  CaloXID id = ah.caloid;
 
   //   ROD;
   if (id.type() == 1)
@@ -666,7 +716,7 @@ void CaloTree::accumulateHits(CaloHit ah)
   // mHepPy.clear();     // GeV
 }
 
-void CaloTree::accumulateEnergy(double edep, int type = 0)
+void CaloXTree::accumulateEnergy(double edep, int type = 0)
 {
   if (type == -99)
     m_eLeaktruth += edep;
@@ -688,7 +738,7 @@ void CaloTree::accumulateEnergy(double edep, int type = 0)
     m_eCentruth += edep;
 }
 
-void CaloTree::accumulateOPsCer(bool isCoreC, int nOPs)
+void CaloXTree::accumulateOPsCer(bool isCoreC, int nOPs)
 {
   if (isCoreC)
   {
@@ -703,9 +753,9 @@ void CaloTree::accumulateOPsCer(bool isCoreC, int nOPs)
 }
 
 // ########################################################################
-void CaloTree::analyze()
+void CaloXTree::analyze()
 {
-  // cout<<"CaloTree::analyze() is called..."<<endl;
+  // cout<<"CaloXTree::analyze() is called..."<<endl;
   double calibSen2 = 100.0 / getParamF("calibSen");
   double calibSph2 = 100.0 / getParamF("calibSph");
   double calibCen2 = 100.0 / getParamF("calibCen");
@@ -733,7 +783,7 @@ void CaloTree::analyze()
   for (auto itr = rzEdep.begin(); itr != rzEdep.end(); itr++)
   {
     ixitr++;
-    CaloID id(itr->first);
+    CaloXID id(itr->first);
     // id.print();
     int zs = id.zslice();
     double edep = itr->second;
@@ -747,7 +797,7 @@ void CaloTree::analyze()
 
   for (auto itr = szEdep.begin(); itr != szEdep.end(); itr++)
   {
-    CaloID id(itr->first);
+    CaloXID id(itr->first);
     // id.print();
     int zs = id.zslice();
     double edep = itr->second;
@@ -761,7 +811,7 @@ void CaloTree::analyze()
 
   for (auto itr = czEdep.begin(); itr != czEdep.end(); itr++)
   {
-    CaloID id(itr->first);
+    CaloXID id(itr->first);
     // id.print();
     int zs = id.zslice();
     double edep = itr->second;
@@ -805,7 +855,7 @@ void CaloTree::analyze()
   for (auto itr = czHits.begin(); itr != czHits.end(); itr++)
   {
     // std::cout<<" rt-key "<<itr->first<<"  val "<<itr->second<<std::endl;
-    CaloID id(itr->first);
+    CaloXID id(itr->first);
     // id.print();
     int zs = id.zslice();
     // std::cout<<" Zslize ZHits: "<<zs<<std::endl;
@@ -831,7 +881,7 @@ void CaloTree::analyze()
   {
     // kcount=kcount+1;
     // std::cout<<" rt-key "<<itr->first<<"  val "<<itr->second<<std::endl;
-    CaloID id(itr->first);
+    CaloXID id(itr->first);
     // id.print();
     int ts = id.tslice();
     double ncer = itr->second;
@@ -887,7 +937,7 @@ void CaloTree::analyze()
 }
 
 //  =============================================================================
-map<int, double> CaloTree::make2Dhits(map<int, double> hits)
+map<int, double> CaloXTree::make2Dhits(map<int, double> hits)
 {
   // this produces 2D hits from 3d hits
   map<int, double> hits2d;
@@ -897,7 +947,7 @@ map<int, double> CaloTree::make2Dhits(map<int, double> hits)
     // std::cout<<" rt-key "<<itr->first<<"  val "<<itr->second<<std::endl;
     int k = itr->first;
     int mask =
-        (1 << 22) - 1; // assuming bit pattern {2,2,5,5,3,3,2,8} (see CaloID)
+        (1 << 22) - 1; // assuming bit pattern {2,2,5,5,3,3,2,8} (see CaloXID)
     int newkey = k & mask;
     double val = itr->second;
 
@@ -907,7 +957,7 @@ map<int, double> CaloTree::make2Dhits(map<int, double> hits)
 }
 
 //  =============================================================================
-void CaloTree::defineCSV(string type)
+void CaloXTree::defineCSV(string type)
 {
   //  type: "2dSC", "2dCH", "3dCH"
   string csvname =
@@ -952,7 +1002,7 @@ void CaloTree::defineCSV(string type)
 }
 
 //  =============================================================================
-void CaloTree::writeCSV(string type, map<int, double> &hits)
+void CaloXTree::writeCSV(string type, map<int, double> &hits)
 {
   //  type: "2dSC", "2dCH", "3dCH"
 
@@ -966,7 +1016,7 @@ void CaloTree::writeCSV(string type, map<int, double> &hits)
     nhits++;
   }
 
-  // cout<<"CaloTree::writeCSV  type "<<type<<endl;
+  // cout<<"CaloXTree::writeCSV  type "<<type<<endl;
   // for(auto itr=fcsv.begin(); itr !=fcsv.end(); itr++) {
   //    std::cout<<" irt-key "<<itr->first<<std::endl;
   // }
@@ -984,7 +1034,7 @@ void CaloTree::writeCSV(string type, map<int, double> &hits)
   for (const auto &n : hits)
   { // using C__11 definition
     int key = n.first;
-    CaloID id = CaloID(key);
+    CaloXID id = CaloXID(key);
     int ix = id.ix();
     int iy = id.iy();
     int it = id.tslice();
@@ -999,7 +1049,7 @@ void CaloTree::writeCSV(string type, map<int, double> &hits)
 //  === user run time parameter handling
 //  =============================================================================
 //  =============================================================================
-void CaloTree::readMacFile(string fileName)
+void CaloXTree::readMacFile(string fileName)
 {
   // read parameters from G4 mac file...
   ifstream macfile(fileName);
@@ -1026,13 +1076,13 @@ void CaloTree::readMacFile(string fileName)
   }
   else
   {
-    cout << "CaloTree::readParamFile: error to open mac file, " << fileName
+    cout << "CaloXTree::readParamFile: error to open mac file, " << fileName
          << endl;
   }
 
   cout << " " << endl;
   cout << "=== Parameters from " << fileName
-       << " (CaloTree::readMacFile) ===" << endl;
+       << " (CaloXTree::readMacFile) ===" << endl;
   map<string, string>::iterator it;
   for (it = mcParams.begin(); it != mcParams.end(); ++it)
   {
@@ -1041,32 +1091,24 @@ void CaloTree::readMacFile(string fileName)
 }
 
 // =======================================================================
-bool CaloTree::setParam(string key, string val)
+bool CaloXTree::setParam(string key, string val)
 {
-  map<string, string>::iterator it;
-  bool keyfound = false;
-  for (it = mcParams.begin(); it != mcParams.end(); ++it)
-  {
-    cout << it->first << " => " << it->second << endl;
-    if (it->first == key)
-    {
-      std::cout << "CaloTree::setParam:  key is found." << std::endl;
-      keyfound = true;
-      break;
-      ;
-    }
-  }
+  bool keyfound = (mcParams.find(key) != mcParams.end());
   if (keyfound)
   {
-    std::cout << "CaloTree::setParam: (overwrite)  kew=" << key
+    std::cout << "CaloXTree::setParam: (overwrite)  key=" << key
               << "  val=" << val << std::endl;
     mcParams[key] = val;
   }
-
-  return !keyfound; // return code:  true is error.
+  else
+  {
+    std::cout << "CaloXTree::setParam: key not found: " << key << " (inserting)" << std::endl;
+    mcParams[key] = val;
+  }
+  return !keyfound; // return code: true means key was new (not an overwrite)
 }
 
-bool CaloTree::getParamB(string key, bool is_required, bool default_value)
+bool CaloXTree::getParamB(string key, bool is_required, bool default_value)
 {
   // return true if the key is found in the map.
   // return false if the key is not found in the map.
@@ -1081,7 +1123,7 @@ bool CaloTree::getParamB(string key, bool is_required, bool default_value)
   else if (is_required)
   {
     std::cout << "  " << std::endl;
-    std::cout << "CaloTree::getParamB: Parameter key (" << key
+    std::cout << "CaloXTree::getParamB: Parameter key (" << key
               << ") does not exist in the mac file. Exit.." << std::endl;
     std::cout << "    note:  key word is case sensitive." << std::endl;
     std::cout << " bool " << std::endl;
@@ -1096,7 +1138,7 @@ bool CaloTree::getParamB(string key, bool is_required, bool default_value)
 }
 
 // =======================================================================
-float CaloTree::getParamF(string key, bool is_required, float default_value)
+float CaloXTree::getParamF(string key, bool is_required, float default_value)
 {
   float val = 98765.0;
   if (mcParams.find(key) != mcParams.end())
@@ -1106,7 +1148,7 @@ float CaloTree::getParamF(string key, bool is_required, float default_value)
   else if (is_required)
   {
     std::cout << "  " << std::endl;
-    std::cout << "CaloTree::getParamF: Parameter key (" << key
+    std::cout << "CaloXTree::getParamF: Parameter key (" << key
               << ") does not exist in the mac file. Exit.." << std::endl;
     std::cout << "    note:  key word is case sensitive." << std::endl;
     std::cout << " float " << std::endl;
@@ -1121,7 +1163,7 @@ float CaloTree::getParamF(string key, bool is_required, float default_value)
 }
 
 // =======================================================================
-int CaloTree::getParamI(string key, bool is_required, int default_value)
+int CaloXTree::getParamI(string key, bool is_required, int default_value)
 {
   int val = 98765;
   if (mcParams.find(key) != mcParams.end())
@@ -1131,7 +1173,7 @@ int CaloTree::getParamI(string key, bool is_required, int default_value)
   else if (is_required)
   {
     std::cout << "  " << std::endl;
-    std::cout << "CaloTree::getParamI: Parameter key (" << key
+    std::cout << "CaloXTree::getParamI: Parameter key (" << key
               << ") does not exist in the mac file. Exit.." << std::endl;
     std::cout << "    note:  key word is case sensitive." << std::endl;
     std::cout << " int " << std::endl;
@@ -1146,7 +1188,7 @@ int CaloTree::getParamI(string key, bool is_required, int default_value)
 }
 
 // =======================================================================
-string CaloTree::getParamS(string key, bool is_required, string default_value)
+string CaloXTree::getParamS(string key, bool is_required, string default_value)
 {
   string val = "aaa";
   if (mcParams.find(key) != mcParams.end())
@@ -1156,7 +1198,7 @@ string CaloTree::getParamS(string key, bool is_required, string default_value)
   else if (is_required)
   {
     std::cout << "  " << std::endl;
-    std::cout << "CaloTree::getParamS: Parameter key (" << key
+    std::cout << "CaloXTree::getParamS: Parameter key (" << key
               << ") does not exist in the mac file. Exit.." << std::endl;
     std::cout << "    note:  key word is case sensitive." << std::endl;
     std::cout << " string " << std::endl;
@@ -1171,7 +1213,7 @@ string CaloTree::getParamS(string key, bool is_required, string default_value)
 }
 
 // =======================================================================
-vector<string> CaloTree::parse_line(string line)
+vector<string> CaloXTree::parse_line(string line)
 {
 
   string buf;            // Have a buffer string

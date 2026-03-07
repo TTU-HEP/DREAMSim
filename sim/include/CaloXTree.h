@@ -1,5 +1,5 @@
-#ifndef CaloTree_h
-#define CaloTree_h 1
+#ifndef CaloXTree_h
+#define CaloXTree_h 1
 
 #include <cstdlib> // for rand() on archer.
 #include <fstream> // for input/output files
@@ -17,16 +17,16 @@ class TTree;
 class TH1D;
 class TH2D;
 
-class CaloHit;
-struct PhotonInfo;
+class CaloXHit;
+struct CaloXPhotonInfo;
 
 using namespace std;
 
-class CaloTree
+class CaloXTree
 {
 public:
-  CaloTree(string, int argc, char **argv); // string outname
-  ~CaloTree();                             // string outname
+  CaloXTree(string, int argc, char **argv); // string outname
+  ~CaloXTree();                             // string outname
   void BeginEvent();
   void EndEvent();
   void EndJob();
@@ -37,13 +37,21 @@ public:
   float getParamF(string key, bool is_required = true, float default_value = 98765.0);
   double getParamD(string key, bool is_required = true, double default_value = 98765.0)
   {
-    return static_cast<double>(getParamF(key, is_required, default_value));
+    // Native double parse — avoids precision loss from routing through getParamF (float)
+    if (mcParams.find(key) != mcParams.end())
+      return std::stod(mcParams[key]);
+    if (is_required) {
+      std::cout << "CaloXTree::getParamD: Parameter key (" << key
+                << ") does not exist in the mac file. Exit.." << std::endl;
+      std::exit(0);
+    }
+    return default_value;
   }
   int getParamI(string key, bool is_required = true, int default_value = 98765);
   string getParamS(string key, bool is_required = true, string default_value = "aaa");
 
   //  called fro SteppingAction...
-  void accumulateHits(CaloHit aHit);
+  void accumulateHits(CaloXHit aHit);
   void accumulateEnergy(double eleak, int type);
   void accumulateOPsCer(bool isCoreC = 0, int nOPs = 1);
   void saveBeamXYZEPxPyPz(string, int, float, float, float, float, float, float, float);
@@ -55,7 +63,7 @@ public:
   std::map<std::string, TH2D *> histo2D;
   std::map<std::string, TH2D *>::iterator histo2Diter;
 
-  vector<PhotonInfo> photonData;
+  vector<CaloXPhotonInfo> photonData;
 
 private:
   // private functions.
@@ -65,7 +73,7 @@ private:
   map<string, string> mcParams; //  MC run time parameters.
 
   //
-  void clearCaloTree();
+  void clearCaloXTree();
   void analyze();
 
   map<int, double> make2Dhits(map<int, double> hits);
@@ -225,6 +233,8 @@ private:
   vector<double> mP_mom_final_z;
   vector<double> mP_time_final;
   vector<int> mP_productionFiber;
+  vector<int> mP_productionRod;
+  vector<int> mP_productionLayer;
   vector<int> mP_finalFiber;
   vector<int> mP_isCerenkov;
   vector<int> mP_isScintillation;
@@ -239,6 +249,18 @@ private:
   int mP_nOPsCer;     // number of Cerenkov photons
   int mP_nOPsCer_Cer; // number of Cerenkov photons in cherenkov fibers
   int mP_nOPsCer_Sci; // number of Cerenkov photons in scintillation fibers
+
+  // Meridional (pz-only) analytical result
+  vector<int>    mP_isCaptured_m;
+  vector<int>    mP_isAttenuated_m;
+  vector<double> mP_captureAngle_m;
+  vector<double> mP_analyticalArrivalTime_m;
+
+  // Skew-corrected (L_z) analytical result
+  vector<int>    mP_isCaptured_s;
+  vector<int>    mP_isAttenuated_s;
+  vector<double> mP_captureAngle_s;
+  vector<double> mP_analyticalArrivalTime_s;
 };
 
 #endif

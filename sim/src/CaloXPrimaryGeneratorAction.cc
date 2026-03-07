@@ -1,33 +1,7 @@
-//
-// ********************************************************************
-// * License and Disclaimer                                           *
-// *                                                                  *
-// * The  Geant4 software  is  copyright of the Copyright Holders  of *
-// * the Geant4 Collaboration.  It is provided  under  the terms  and *
-// * conditions of the Geant4 Software License,  included in the file *
-// * LICENSE and available at  http://cern.ch/geant4/license .  These *
-// * include a list of copyright holders.                             *
-// *                                                                  *
-// * Neither the authors of this software system, nor their employing *
-// * institutes,nor the agencies providing financial support for this *
-// * work  make  any representation or  warranty, express or implied, *
-// * regarding  this  software system or assume any liability for its *
-// * use.  Please see the license in the file  LICENSE  and URL above *
-// * for the full disclaimer and the limitation of liability.         *
-// *                                                                  *
-// * This  code  implementation is the result of  the  scientific and *
-// * technical work of the GEANT4 collaboration.                      *
-// * By using,  copying,  modifying or  distributing the software (or *
-// * any work based  on the software)  you  agree  to acknowledge its *
-// * use  in  resulting  scientific  publications,  and indicate your *
-// * acceptance of all terms of the Geant4 Software license.          *
-// ********************************************************************
-//
-//
-/// \file B4PrimaryGeneratorAction.cc
-/// \brief Implementation of the B4PrimaryGeneratorAction class
+/// \file CaloXPrimaryGeneratorAction.cc
+/// \brief Implementation of the CaloXPrimaryGeneratorAction class
 
-#include "B4PrimaryGeneratorAction.hh"
+#include "CaloXPrimaryGeneratorAction.hh"
 
 #include "G4RunManager.hh"
 #include "G4LogicalVolumeStore.hh"
@@ -41,7 +15,7 @@
 #include "Randomize.hh"
 #include "Py8Jet.h"
 
-#include "B4DetectorConstruction.hh"
+#include "CaloXDetectorConstruction.hh"
 
 // for root tree
 #include "TFile.h"
@@ -51,17 +25,16 @@
 #include "TTree.h"
 // #include "TROOT.h"
 
-#include "Py8Jet.h"
 
-#include "CaloTree.h"
+#include "CaloXTree.h"
 
 using namespace std;
 
-B4PrimaryGeneratorAction::B4PrimaryGeneratorAction(B4DetectorConstruction *det, CaloTree *histo)
+CaloXPrimaryGeneratorAction::CaloXPrimaryGeneratorAction(CaloXDetectorConstruction *det, CaloXTree *histo)
     : G4VUserPrimaryGeneratorAction(),
       fParticleGun(nullptr), fDetector(det), hh(histo)
 {
-  cout << "B4PrimaryGeneratorAction constructer is called..." << endl;
+  cout << "CaloXPrimaryGeneratorAction constructer is called..." << endl;
   // Create the table containing all particle names
   particleTable = G4ParticleTable::GetParticleTable();
 
@@ -72,13 +45,13 @@ B4PrimaryGeneratorAction::B4PrimaryGeneratorAction(B4DetectorConstruction *det, 
     py8eventCounter = 0;
     py8eventNumber = CaloXPythiaSkip;
     string inFileName = CaloXPythiaFile;
-    std::cout << "B4PrimaryGeneratorAction:  Using Pythia Event file: " << inFileName << std::endl;
+    std::cout << "CaloXPrimaryGeneratorAction:  Using Pythia Event file: " << inFileName << std::endl;
     finPy8 = new TFile(inFileName.c_str());
     TTree *py8tree;
     finPy8->GetObject("Particles", py8tree);
     py8evt = new Py8Jet(py8tree);
     py8evt->Init(py8tree);
-    std::cout << "B4PrimaryGeneratorAction: nentries=" << py8tree->GetEntriesFast() << std::endl;
+    std::cout << "CaloXPrimaryGeneratorAction: nentries=" << py8tree->GetEntriesFast() << std::endl;
   }
   else
   {
@@ -94,14 +67,14 @@ B4PrimaryGeneratorAction::B4PrimaryGeneratorAction(B4DetectorConstruction *det, 
   }
 }
 
-B4PrimaryGeneratorAction::~B4PrimaryGeneratorAction()
+CaloXPrimaryGeneratorAction::~CaloXPrimaryGeneratorAction()
 {
   delete fParticleGun;
 }
 
-void B4PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
+void CaloXPrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
 {
-  // cout<<"B4PrimaryGeneratorAction::GeneratePrimaries is called..."<<endl;
+  // cout<<"CaloXPrimaryGeneratorAction::GeneratePrimaries is called..."<<endl;
   // This function is called at the begining of event
 
   // In order to avoid dependence of PrimaryGeneratorAction
@@ -128,7 +101,7 @@ void B4PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
     msg << "World volume of box shape not found." << G4endl;
     msg << "Perhaps you have changed geometry." << G4endl;
     msg << "The gun will be place in the center.";
-    G4Exception("B4PrimaryGeneratorAction::GeneratePrimaries()",
+    G4Exception("CaloXPrimaryGeneratorAction::GeneratePrimaries()",
                 "MyCode0002", JustWarning, msg);
   }
 
@@ -154,7 +127,7 @@ void B4PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
     msg << "Calorimeter volume of box shape not found." << G4endl;
     msg << "Perhaps you have changed geometry." << G4endl;
     msg << "The gun will be place in the center.";
-    G4Exception("B4PrimaryGeneratorAction::GeneratePrimaries()",
+    G4Exception("CaloXPrimaryGeneratorAction::GeneratePrimaries()",
                 "MyCode0002", JustWarning, msg);
   }
 
@@ -164,13 +137,9 @@ void B4PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
   }
   else
   {
-    double r1 = G4UniformRand();
-    double r2 = G4UniformRand();
-    double r3 = G4UniformRand();
     float x = ((hh->getParamF("gun_x_max") - hh->getParamF("gun_x_min")) * G4UniformRand() + hh->getParamF("gun_x_min")) * cm;
     float y = ((hh->getParamF("gun_y_max") - hh->getParamF("gun_y_min")) * G4UniformRand() + hh->getParamF("gun_y_min")) * cm;
     float z = ((hh->getParamF("gun_z_max") - hh->getParamF("gun_z_min")) * G4UniformRand() + hh->getParamF("gun_z_min")) * cm;
-    // float z = -calorimeterZHalfLength - 50.0;
 
     float en = ((hh->getParamF("gun_energy_max") - hh->getParamF("gun_energy_min")) * G4UniformRand() + hh->getParamF("gun_energy_min")) * GeV;
     string ptype = hh->getParamS("gun_particle");
@@ -178,23 +147,20 @@ void B4PrimaryGeneratorAction::GeneratePrimaries(G4Event *anEvent)
     float py = ((hh->getParamF("pMomentum_y_max") - hh->getParamF("pMomentum_y_min")) * G4UniformRand() + hh->getParamF("pMomentum_y_min"));
     float pz = ((hh->getParamF("pMomentum_z_max") - hh->getParamF("pMomentum_z_min")) * G4UniformRand() + hh->getParamF("pMomentum_z_min"));
 
-    G4int nofParticles = 1;
-    fParticleGun = new G4ParticleGun(nofParticles);
-
+    // Re-use existing particle gun; update kinematics for this event
     auto particleDefinition = G4ParticleTable::GetParticleTable()->FindParticle(ptype);
     fParticleGun->SetParticleDefinition(particleDefinition);
     fParticleGun->SetParticlePosition(G4ThreeVector(x, y, z));
     fParticleGun->SetParticleEnergy(en);
     fParticleGun->SetParticleMomentumDirection(G4ThreeVector(px, py, pz));
     fParticleGun->GeneratePrimaryVertex(anEvent);
-    // cout<<"B4PrimaryGeneratorAction::GeneratePrimaries set a particle..."<<endl;
-    // cout<<"   (x,y,z,en)="<<x<<",  "<<y<<",  "<<z<<",  "<<en<<",  "<<ptype<<endl;
+
     int pdgid = particleDefinition->GetPDGEncoding();
     hh->saveBeamXYZEPxPyPz(ptype, pdgid, x, y, z, en, px, py, pz);
   }
 }
 
-void B4PrimaryGeneratorAction::getParamFromEnvVars()
+void CaloXPrimaryGeneratorAction::getParamFromEnvVars()
 {
   CaloXPythiaON = hh->getParamB("CaloXPythiaON", false, 0); // default is 0, no Pythia8.
 
@@ -214,7 +180,7 @@ void B4PrimaryGeneratorAction::getParamFromEnvVars()
 }
 
 // -----------------------------------------------------------------------------
-void B4PrimaryGeneratorAction::getPy8Event(G4Event *anEvent)
+void CaloXPrimaryGeneratorAction::getPy8Event(G4Event *anEvent)
 {
 
   py8evt->GetEntry(py8eventNumber);
@@ -223,22 +189,18 @@ void B4PrimaryGeneratorAction::getPy8Event(G4Event *anEvent)
 
   py8eventCounter++;
   py8eventNumber++;
-  // std::cout<<"B4PrimaryGeneratorAction::getPy8Event  after py8evt->GetEntry="<<std::endl;
+  // std::cout<<"CaloXPrimaryGeneratorAction::getPy8Event  after py8evt->GetEntry="<<std::endl;
   // std::cout<<"py8evt->pid->size()  "<<py8evt->pid->size()<<std::endl;
   // std::cout<<"    pid=py8evt->pid->at(i) ="<<py8evt->pid->at(0)<<std::endl;
 
-  G4ParticleGun mygun;
-  double r1 = CLHEP::RandFlat::shoot();
-  double r2 = CLHEP::RandFlat::shoot();
-  double r3 = CLHEP::RandFlat::shoot();
-  double x = CaloXPythiaXmin + (CaloXPythiaXmax - CaloXPythiaXmin) * r1;
-  double y = CaloXPythiaYmin + (CaloXPythiaYmax - CaloXPythiaYmin) * r2;
-  double z = CaloXPythiaZmin + (CaloXPythiaZmax - CaloXPythiaZmin) * r3;
+  double x = CaloXPythiaXmin + (CaloXPythiaXmax - CaloXPythiaXmin) * CLHEP::RandFlat::shoot();
+  double y = CaloXPythiaYmin + (CaloXPythiaYmax - CaloXPythiaYmin) * CLHEP::RandFlat::shoot();
+  double z = CaloXPythiaZmin + (CaloXPythiaZmax - CaloXPythiaZmin) * CLHEP::RandFlat::shoot();
   if (z < -worldZHalfLength)
     z = -worldZHalfLength + 0.0001; // limit to the World volume.
   double t = 0.0;
 
-  // std::cout<<"B4PrimaryGeneratorAction::getPy8Event  x="<<x
+  // std::cout<<"CaloXPrimaryGeneratorAction::getPy8Event  x="<<x
   //<<"   CaloXPythiaXmin "<<CaloXPythiaXmin<<"  max "<<CaloXPythiaXmax<<std::endl;
 
   G4PrimaryVertex *vertex = new G4PrimaryVertex(G4ThreeVector(x, y, z), t);
@@ -259,10 +221,10 @@ void B4PrimaryGeneratorAction::getPy8Event(G4Event *anEvent)
   // std::cout<<"anEvent->GetPrimaryVertex(0)->GetNumberOfParticle(): "<<anEvent->GetPrimaryVertex(0)->GetNumberOfParticle()<<std::endl;
   // std::cout<<"anEvent->GetPrimaryVertex(0)->GetZ0(): "<<anEvent->GetPrimaryVertex(0)->GetZ0()<<std::endl;
   // G4PrimaryParticle* primary = anEvent->GetPrimaryVertex(0)->GetPrimary(0);
-  // std::cout<<"B4PrimaryGeneratorAction::getPy8Event:"<<primary->GetMomentum()<<std::endl;
+  // std::cout<<"CaloXPrimaryGeneratorAction::getPy8Event:"<<primary->GetMomentum()<<std::endl;
 }
 
-void B4PrimaryGeneratorAction::printPy8Event()
+void CaloXPrimaryGeneratorAction::printPy8Event()
 {
   // Header.
   cout << "\n --------  PY8CaloX Event Listing ----------"
@@ -286,7 +248,7 @@ void B4PrimaryGeneratorAction::printPy8Event()
   } // end of loop over particles...
 }
 
-void B4PrimaryGeneratorAction::FillHEPparticles(
+void CaloXPrimaryGeneratorAction::FillHEPparticles(
     std::vector<int> *mHepPID, std::vector<int> *mHepStatus,
     std::vector<int> *mHepMother1, std::vector<int> *mHepMother2,
     std::vector<int> *mHepDaughter1, std::vector<int> *mHepDaughter2,
@@ -294,6 +256,11 @@ void B4PrimaryGeneratorAction::FillHEPparticles(
     std::vector<float> *mHepPz, std::vector<float> *mHepE,
     std::vector<float> *mHepMass)
 {
+  // NOTE: status, mother, daughter, and mass vectors are accepted in the signature
+  // but not yet filled — Py8Jet does not currently store those branches.
+  // Extend Py8Jet and add push_back calls here if that information is needed.
+  (void)mHepStatus; (void)mHepMother1; (void)mHepMother2;
+  (void)mHepDaughter1; (void)mHepDaughter2; (void)mHepMass;
   if (py8evt == NULL)
     return;
 

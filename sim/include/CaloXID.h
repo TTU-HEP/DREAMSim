@@ -1,13 +1,13 @@
-#ifndef CaloID_h
-#define CaloID_h 1
+#ifndef CaloXID_h
+#define CaloXID_h 1
 
-class CaloID
+class CaloXID
 {
 public:
-   CaloID();
-   ~CaloID();
-   CaloID(int a_type, int a_fiber, int a_layer, int a_rod, double a_z, double a_t);
-   CaloID(int _key);
+   CaloXID();
+   ~CaloXID();
+   CaloXID(int a_type, int a_fiber, int a_layer, int a_rod, double a_z, double a_t);
+   CaloXID(int _key);
 
    int getTkey(); // time-slice (50ps/slice)  based key
    int getZkey(); // z-slice (cm/slice)) based key
