@@ -3,13 +3,19 @@ makeHitsZ.py — energy deposition and Cherenkov photon z-profile plots
 
 Usage examples
 --------------
-# Run from simulation files (default)
-python makeHitsZ.py --ele inputs/electrons_40GeV.txt --pion inputs/pions_40GeV.txt \
-                    --energy 40 --suffix 40GeV
+# Compare same particle at different positions (each gets its own color)
+python makeHitsZ.py \
+    --input ele_center inputs/electrons_center.txt \
+    --input ele_x5y0   inputs/electrons_x5y0.txt  \
+    --input ele_x10y0  inputs/electrons_x10y0.txt \
+    --energy 40 --suffix pos_scan_40GeV
 
-# Add neutrons
-python makeHitsZ.py --ele inputs/electrons_40GeV.txt --pion inputs/pions_40GeV.txt \
-                    --neu inputs/neutrons.txt --energy 40 --suffix 40GeV
+# Mix particle types and position labels freely
+python makeHitsZ.py \
+    --ele  inputs/electrons_40GeV.txt \
+    --pion inputs/pions_40GeV.txt \
+    --input ele_offset inputs/electrons_offset.txt \
+    --energy 40 --suffix mixed_40GeV
 
 # Replot from a previously saved ROOT file (fast, no re-reading simulation)
 python makeHitsZ.py --from-root hitsZ_40GeV.root --energy 40 --suffix 40GeV_replot
@@ -45,9 +51,21 @@ CENTER_ROD_MAX   =  51
 CENTER_LAYER_MIN =  40
 CENTER_LAYER_MAX =  52
 
-# Histogram names that are saved to / loaded from the ROOT cache file
-SAVE_HNAMES = ["truthhit_z", "truthhit_z_Cer", "truthhit_z_Cer_center"]
-
+hnames =  [
+        "eLeaktruth", "eCalotruth", "eTotaltruth", "eTotalGeant",
+        "eRodtruth", "eCentruth", "eScintruth",
+        "nOPsCer_Cer", "nOPsCer_Sci", "nOPsCer_Cer_perGeV", "nOPsCer_Sci_perGeV",
+        "truthhit_x", "truthhit_y", "truthhit_z", "truthhit_r",
+        "truthhit_z_Cer", "truthhit_z_Cer_center",
+        "angle_skew", "angle_meridional",
+        "time_skew", "time_meridional",
+        # 2D
+        "truthhit_x_vs_truthhit_y", "truthhit_x_vs_truthhit_z", "truthhit_y_vs_truthhit_z",
+        "truthhit_r_vs_truthhit_z",
+        "time_vs_truthhit_z", "time_vs_truthhit_r",
+        "time_skew_vs_truthhit_z", "time_meridional_vs_truthhit_z",
+        "time_skew_vs_z_prof", "time_meridional_vs_z_prof",
+    ]
 
 # ---------------------------------------------------------------------------
 # Step 1 — build RDataFrames and add derived columns
@@ -122,30 +140,15 @@ def book_histos(rdfs, book, suffix):
 
     def h(name):
         histos[name] = OrderedDict()
-
-    for name in [
-        "eLeaktruth", "eCalotruth", "eTotaltruth", "eTotalGeant",
-        "eRodtruth", "eCentruth", "eScintruth",
-        "nOPsCer_Cer", "nOPsCer_Sci", "nOPsCer_Cer_perGeV", "nOPsCer_Sci_perGeV",
-        "truthhit_x", "truthhit_y", "truthhit_z", "truthhit_r",
-        "truthhit_z_Cer", "truthhit_z_Cer_center",
-        "angle_skew", "angle_meridional",
-        "time_skew", "time_meridional",
-        # 2D
-        "truthhit_x_vs_truthhit_y", "truthhit_x_vs_truthhit_z",
-        "truthhit_r_vs_truthhit_z",
-        "time_vs_truthhit_z", "time_vs_truthhit_r",
-        "time_skew_vs_truthhit_z", "time_meridional_vs_truthhit_z",
-        "time_skew_vs_z_prof", "time_meridional_vs_z_prof",
-
-    ]:
+        
+    for name in hnames:
         h(name)
 
     z_lo, z_hi = book["z"]
     t_min, t_max = book["time"]
 
     for part, rdf in rdfs.items():
-        tag = f"{suffix}_{part}"   # unique per (run, particle)
+        tag = f"{suffix}_{part}"   # unique per (run, label)
 
         # --- per-event scalars ---
         histos["eLeaktruth"][part] = rdf.Histo1D(
@@ -189,13 +192,16 @@ def book_histos(rdfs, book, suffix):
 
         # --- 2D spatial ---
         histos["truthhit_x_vs_truthhit_y"][part] = rdf.Histo2D(
-            (f"truthhit_x_vs_truthhit_y_{tag}", "", 50, -20, 20, 50, -20, 20),
+            (f"truthhit_x_vs_truthhit_y_{tag}", "", 60, -30, 30, 50, -20, 20),
             "truthhit_x", "truthhit_y", "eweight")
         histos["truthhit_x_vs_truthhit_z"][part] = rdf.Histo2D(
-            (f"truthhit_x_vs_truthhit_z_{tag}", "", 50, -20, 20, 100, z_lo, z_hi),
+            (f"truthhit_x_vs_truthhit_z_{tag}", "", 60, -30, 30, 100, z_lo, z_hi),
             "truthhit_x", "truthhit_z", "eweight")
+        histos["truthhit_y_vs_truthhit_z"][part] = rdf.Histo2D(
+            (f"truthhit_y_vs_truthhit_z_{tag}", "", 60, -30, 30, 100, z_lo, z_hi),
+            "truthhit_y", "truthhit_z", "eweight")
         histos["truthhit_r_vs_truthhit_z"][part] = rdf.Histo2D(
-            (f"truthhit_r_vs_truthhit_z_{tag}", "", 50, 0, 30, 100, z_lo, z_hi),
+            (f"truthhit_r_vs_truthhit_z_{tag}", "", 50, 0, 40, 100, z_lo, z_hi),
             "truthhit_r", "truthhit_z", "eweight")
         
         histos["time_skew_vs_truthhit_z"][part] = rdf.Histo2D(
@@ -205,7 +211,7 @@ def book_histos(rdfs, book, suffix):
             (f"time_meridional_vs_truthhit_z_{tag}", "", 50, 0, t_max, 100, z_lo, z_hi),
             "OP_analyticalArrivalTime_m", "OP_pos_produced_z", "is_meridional_center")
         
-        # --- profile: mean analytical arrival time vs production z (RMS error bars) ---
+        ## --- profile: mean analytical arrival time vs production z (RMS error bars) ---
         histos["time_skew_vs_z_prof"][part] = rdf.Profile1D(
             ROOT.RDF.TProfile1DModel(
                 f"time_skew_vs_z_prof_{tag}", "", 100, z_lo, z_hi, "s"),
@@ -232,7 +238,7 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None):
     draw    : draw-range dict from energy_axis_ranges()
     suffix  : string appended to every output filename
     outdir  : directory for output PNG/PDF files
-    labels  : ordered list of particle labels present in histos
+    labels  : ordered list of labels present in histos
     calib   : optional calibration dict (from load_calibration)
     """
     ensure_dir(outdir)
@@ -245,7 +251,7 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None):
 
     args1d = dict(dology=True, donormalize=True, mycolors=colors,
                   MCOnly=True, addOverflow=True, addUnderflow=True,
-                  outdir=outdir)
+                  outdir=outdir, legendPos = [0.60, 0.60, 0.90, 0.90])
     
     def d1(hname, xlo, xhi, xlabel, outname):
         DrawHistos(vals(hname), keys(hname),
@@ -259,10 +265,10 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None):
     d1("eRodtruth",         *draw["eRod"],              "Rod Energy [GeV]",            "eRodtruth")
     d1("eCentruth",         *draw["eCentruth"],         "C-Fiber Energy [GeV]",        "eCentruth")
     d1("eScintruth",        *draw["eScintruth"],        "S-Fiber Energy [GeV]",        "eScintruth")
-    d1("nOPsCer_Cer",       *draw["nOPsCer_Cer"],       "N Cer OPs (C-fiber)",         "nOPsCer_Cer")
-    d1("nOPsCer_Sci",       *draw["nOPsCer_Sci"],       "N Cer OPs (S-fiber)",         "nOPsCer_Sci")
-    d1("nOPsCer_Cer_perGeV",*draw["nOPsCer_Cer_perGeV"],"N Cer OPs / GeV (C-fiber)",  "nOPsCer_Cer_perGeV")
-    d1("nOPsCer_Sci_perGeV",*draw["nOPsCer_Sci_perGeV"],"N Cer OPs / GeV (S-fiber)",  "nOPsCer_Sci_perGeV")
+    #d1("nOPsCer_Cer",       *draw["nOPsCer_Cer"],       "N Cer OPs (C-fiber)",         "nOPsCer_Cer")
+    #d1("nOPsCer_Sci",       *draw["nOPsCer_Sci"],       "N Cer OPs (S-fiber)",         "nOPsCer_Sci")
+    #d1("nOPsCer_Cer_perGeV",*draw["nOPsCer_Cer_perGeV"],"N Cer OPs / GeV (C-fiber)",  "nOPsCer_Cer_perGeV")
+    #d1("nOPsCer_Sci_perGeV",*draw["nOPsCer_Sci_perGeV"],"N Cer OPs / GeV (S-fiber)",  "nOPsCer_Sci_perGeV")
 
     args_edep = {**args1d, "donormalize": False}
     
@@ -313,13 +319,16 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None):
         if label not in histos["truthhit_x_vs_truthhit_y"]:
             continue
         DrawHistos([histos["truthhit_x_vs_truthhit_y"][label]], [],
-                   -20, 20, "x [cm]", -20, 20, "y [cm]",
+                   -30, 30, "x [cm]", -30, 30, "y [cm]",
                    f"truthhit_x_vs_y_{label}_{suffix}", **args2d)
         DrawHistos([histos["truthhit_x_vs_truthhit_z"][label]], [],
-                   -20, 20, "x [cm]", z_lo, z_hi, "z [cm]",
+                   -30, 30, "x [cm]", z_lo, z_hi, "z [cm]",
                    f"truthhit_x_vs_z_{label}_{suffix}", **args2d)
+        DrawHistos([histos["truthhit_y_vs_truthhit_z"][label]], [],
+                   -30, 30, "y [cm]", z_lo, z_hi, "z [cm]",
+                   f"truthhit_y_vs_z_{label}_{suffix}", **args2d)
         DrawHistos([histos["truthhit_r_vs_truthhit_z"][label]], [],
-                   0, 30, "r [cm]", z_lo, z_hi, "z [cm]",
+                   0, 40, "r [cm]", z_lo, z_hi, "z [cm]",
                    f"truthhit_r_vs_z_{label}_{suffix}", **args2d)
         DrawHistos([histos["time_skew_vs_truthhit_z"][label]], [],
                    t_min, t_max, "Time [ns] (skew)", z_lo, z_hi, "z [cm]",
@@ -329,41 +338,35 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None):
                    f"time_meridional_vs_z_{label}_{suffix}", **args2d_op)
         
     # ── Profile overlays: mean arrival time vs z, RMS error bars ─────────────
-    args_prof = dict(
-        dology=False, donormalize=False, MCOnly=True,
-        addOverflow=False, addUnderflow=False,
-    )
-    markers_solid = [20, 21, 22, 23]
-    markers_open  = [24, 25, 26, 27]
+    args_prof = {**args1d, "dology": False, "donormalize": False}
+    #args_prof = dict(
+    #    dology=False, donormalize=False, MCOnly=True,
+    #    addOverflow=False, addUnderflow=False,
+    #)
+    markers = [20, 21, 22, 23, 24, 25, 26, 27]
 
     prof_skew = vals("time_skew_vs_z_prof")
     prof_meri = vals("time_meridional_vs_z_prof")
-    n = len(labels)
 
-    # skew only: all particles overlaid
     if prof_skew:
         DrawHistos(
             prof_skew, keys("time_skew_vs_z_prof"),
             z_lo, z_hi, "Production z [cm]",
             t_min, t_max + 5, "Mean arrival time [ns] (skew)",
             f"time_skew_vs_z_prof_{suffix}",
-            mycolors=get_colors(keys("time_skew_vs_z_prof")),
             drawoptions=["E1"] * len(prof_skew),
-            markerstyles=markers_solid[:len(prof_skew)],
-            outdir=outdir, **args_prof)
+            markerstyles=markers[:len(prof_skew)],
+            **args_prof)
 
-    # meridional only: all particles overlaid
     if prof_meri:
         DrawHistos(
             prof_meri, keys("time_meridional_vs_z_prof"),
             z_lo, z_hi, "Production z [cm]",
             t_min, t_max, "Mean arrival time [ns] (meridional)",
             f"time_meridional_vs_z_prof_{suffix}",
-            mycolors=get_colors(keys("time_meridional_vs_z_prof")),
             drawoptions=["E1"] * len(prof_meri),
-            markerstyles=markers_solid[:len(prof_meri)],
-            outdir=outdir, **args_prof)
-
+            markerstyles=markers[:len(prof_meri)],
+            **args_prof)
 
 
 # ---------------------------------------------------------------------------
@@ -376,6 +379,8 @@ def run(particle_files, suffix, beam_energy_gev,
     Parameters
     ----------
     particle_files : dict {label: file_list_path}
+                     Labels can be particle names ("ele", "pion") or arbitrary
+                     position/scan tags ("ele_center", "ele_x5y0", ...).
     suffix         : str, appended to all output names
     beam_energy_gev: float
     from_root      : str or None — if set, reload histos from this ROOT file
@@ -396,18 +401,7 @@ def run(particle_files, suffix, beam_energy_gev,
     if from_root:
         # ----- fast replot mode -----
         print(f"\nLoading histograms from {from_root}")
-        all_hnames = [
-            "eLeaktruth", "eCalotruth", "eTotaltruth", "eTotalGeant",
-            "eRodtruth", "eCentruth", "eScintruth",
-            "nOPsCer_Cer", "nOPsCer_Sci", "nOPsCer_Cer_perGeV", "nOPsCer_Sci_perGeV",
-            "truthhit_x", "truthhit_y", "truthhit_z", "truthhit_r",
-            "truthhit_z_Cer", "truthhit_z_Cer_center",
-            "angle_skew", "angle_meridional",
-            "time_skew", "time_meridional",
-            "truthhit_x_vs_truthhit_y", "truthhit_x_vs_truthhit_z",
-            "truthhit_r_vs_truthhit_z",
-            "time_skew_vs_truthhit_z", "time_meridional_vs_truthhit_z"
-        ]
+        all_hnames = hnames
         histos = load_histos_from_root(from_root, all_hnames, labels)
     else:
         # ----- full run mode -----
@@ -432,11 +426,29 @@ def run(particle_files, suffix, beam_energy_gev,
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Make energy deposition and Cherenkov z-profile plots.")
-    p.add_argument("--ele",    help="Text file listing electron ROOT files")
-    p.add_argument("--pion",   help="Text file listing pion ROOT files")
-    p.add_argument("--neu",    help="Text file listing neutron ROOT files (optional)")
-    p.add_argument("--mu",     help="Text file listing muon ROOT files (optional)")
+        description="Make energy deposition and Cherenkov z-profile plots.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__)
+
+    # ── legacy single-particle shortcuts (backward compatible) ──────────────
+    p.add_argument("--ele",  help="Text file listing electron ROOT files")
+    p.add_argument("--pion", help="Text file listing pion ROOT files")
+    p.add_argument("--neu",  help="Text file listing neutron ROOT files (optional)")
+    p.add_argument("--mu",   help="Text file listing muon ROOT files (optional)")
+
+    # ── generic multi-input: one or more --input LABEL FILE pairs ───────────
+    p.add_argument(
+        "--input", nargs=2, metavar=("LABEL", "FILE"),
+        action="append", default=[],
+        help=(
+            "Add an input with an arbitrary label (repeatable). "
+            "Use this to compare the same particle at different positions: "
+            "--input ele_center inputs/ele_center.txt "
+            "--input ele_x5y0 inputs/ele_x5.txt"
+        ),
+    )
+
+    # ── standard options ─────────────────────────────────────────────────────
     p.add_argument("--energy", type=float, default=100.0,
                    help="Nominal beam energy in GeV (default: 100)")
     p.add_argument("--suffix", default="",
@@ -448,7 +460,7 @@ def parse_args():
     p.add_argument("--calib",  default=None, metavar="FILE",
                    help="JSON calibration sidecar file (optional)")
     p.add_argument("--max-files", type=int, default=100, metavar="N",
-                   help="Max ROOT files to read per particle type (default: 100; use small N for quick tests)")
+                   help="Max ROOT files to read per label (default: 100)")
     return p.parse_args()
 
 
@@ -458,16 +470,23 @@ if __name__ == "__main__":
 
     args = parse_args()
 
-    # Build particle_files dict from whatever was provided
+    # ── Build particle_files dict ────────────────────────────────────────────
+    # Legacy shortcuts appear first (preserves legend order), then --input entries.
     particle_files = OrderedDict()
+
     for label, path in [("ele", args.ele), ("pion", args.pion),
                         ("neu", args.neu), ("mu", args.mu)]:
         if path:
             particle_files[label] = path
 
+    for label, path in args.input:
+        if label in particle_files:
+            print(f"WARNING: label '{label}' already registered; overwriting with {path}")
+        particle_files[label] = path
+
     if not particle_files and not args.from_root:
         print("ERROR: provide at least one of --ele / --pion / --neu / --mu, "
-              "or use --from-root.")
+              "or --input LABEL FILE, or use --from-root.")
         sys.exit(1)
 
     # If replotting from ROOT we still need labels — infer from what was given,
@@ -476,11 +495,11 @@ if __name__ == "__main__":
         particle_files = OrderedDict([("ele", ""), ("pion", "")])
 
     run(particle_files,
-        suffix         = args.suffix or f"{int(args.energy)}GeV",
-        beam_energy_gev= args.energy,
-        from_root      = args.from_root,
-        calib_json     = args.calib,
-        outdir         = args.outdir,
-        max_files      = args.max_files)
+        suffix          = args.suffix or f"{int(args.energy)}GeV",
+        beam_energy_gev = args.energy,
+        from_root       = args.from_root,
+        calib_json      = args.calib,
+        outdir          = args.outdir,
+        max_files       = args.max_files)
 
     print("Done")
