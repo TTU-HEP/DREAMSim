@@ -4,3 +4,8 @@ sim/build/
 *root
 *.ipynb*
 *build*
+*.d
+*.so
+*.pcm
+*machinefile*
+plotter/plots_*

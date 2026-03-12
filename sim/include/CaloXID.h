@@ -37,8 +37,8 @@ private:
    int _rod;   // [1,90] horizontal axis
    int _fiber; // c[1,5], s[1,3]
 
-   // key   (30 bits total)
-   //   _type (2 bits)   1=rod, 2=sc,  3=ch
+   // key   (31 bits total)
+   //   _type (3 bits)   1=rod, 2=sc, 3=cher-plastic, 4=cher-quartz
    //   _area (2 bits)   0=Al-block, 1=no-SiPM, 2=6mm, 3=3mm
    //   _ix   (5 bits)   [0,29]
    //   _iy   (5 bits)   [0,19]
@@ -47,7 +47,7 @@ private:
    //   _ztype  (2 bit)  1=zslice, 2=tslice, 3=2D
    //   _iz   (8 bits)   [0,255]
 
-   int _type; // [1,3]   1=rod, 2=sc, 3=cer
+   int _type; // [1,4]   1=rod, 2=sc, 3=cer-plastic, 4=cer-quartz
    int _area; //
 
    int _nx;     // =3: number of rods (in x) per channel

@@ -23,12 +23,10 @@
 #include "CaloXTree.h"
 #include "CaloXPhotonInfo.h"
 
-#include "TH1D.h"
 #include "G4LogicalVolumeStore.hh"
 #include "G4Tubs.hh"
 #include "G4MaterialPropertiesTable.hh"
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 CaloXSteppingAction::CaloXSteppingAction(CaloXEventAction *eventAction, CaloXTree *histo)
     : G4UserSteppingAction(),
@@ -57,13 +55,11 @@ CaloXSteppingAction::CaloXSteppingAction(CaloXEventAction *eventAction, CaloXTre
   }
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 CaloXSteppingAction::~CaloXSteppingAction()
 {
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void CaloXSteppingAction::UserSteppingAction(const G4Step *step)
 {
@@ -180,13 +176,18 @@ void CaloXSteppingAction::UserSteppingAction(const G4Step *step)
     caloType = 2;
     birks = getBirk(step);
   }
-  if (thisName.compare(0, 18, "fiberCoreCherePhys") == 0)
+  if (thisName == "fiberCoreCherePlasticPhys")
   {
     caloType = 3;
-    ncer = UserCerenkov(step); // cerenkov photons;
+    ncer = UserCerenkov(step); // cerenkov photons (plastic fiber);
+  }
+  if (thisName == "fiberCoreChereQuartzPhys")
+  {
+    caloType = 4;
+    ncer = UserCerenkov(step); // cerenkov photons (quartz fiber);
   }
 
-  if (caloType == 2 || caloType == 3)
+  if (caloType == 2 || caloType == 3 || caloType == 4)
   {
     // todo: there might be better ways to get these information.
     // 0 is core number,
@@ -252,7 +253,6 @@ void CaloXSteppingAction::UserSteppingAction(const G4Step *step)
   // fEventAction->StepAnalysis(step,ncer[0],ncer[1]);   // in original sim. Moved to above.
 } // end of CaloXSteppingAction::UserSteppingAction.
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 vector<double> CaloXSteppingAction::UserCerenkov(const G4Step *step)
 {
@@ -342,11 +342,9 @@ vector<double> CaloXSteppingAction::UserCerenkov(const G4Step *step)
         double pde = getPDE(wavelength);
         nCERlocal = nCERlocal + pde;
 
-        hh->histo1D["cerWL"]->Fill(wavelength, pde);
         if (capture == 1)
         {
           nCERlocalCap = nCERlocalCap + pde;
-          hh->histo1D["cerWLcaptured"]->Fill(wavelength, pde);
         }
 
         if (pdgcode == 11)
@@ -355,7 +353,6 @@ vector<double> CaloXSteppingAction::UserCerenkov(const G4Step *step)
           if (capture == 1)
           {
             nCERlocalElecCap = nCERlocalElecCap + pde;
-            hh->histo1D["cerWLcapturedELEC"]->Fill(wavelength, pde);
           }
         }
         // cout<<"cerenkov phton  en="<<en<<endl;
@@ -830,6 +827,8 @@ void CaloXSteppingAction::initOptics()
   fN_CladS = readRIndex("PMMA_Clad");
   fN_CoreC = readRIndex("PMMA");
   fN_CladC = readRIndex("Fluorinated_Polymer");
+  fN_CoreQ = readRIndex("Fused_Silica");
+  fN_CladQ = readRIndex("Hard_Polymer");
 
   // Read bulk absorption lengths (ABSLENGTH) at the same reference energy
   auto readAbsLen = [&](const char *matName) -> double {
@@ -840,6 +839,7 @@ void CaloXSteppingAction::initOptics()
   };
   fAbsLen_CoreS = readAbsLen("Polystyrene");
   fAbsLen_CoreC = readAbsLen("PMMA");
+  fAbsLen_CoreQ = readAbsLen("Fused_Silica");
 
   auto *coreVol = G4LogicalVolumeStore::GetInstance()->GetVolume("fiberCoreS");
   if (!coreVol)
@@ -850,10 +850,12 @@ void CaloXSteppingAction::initOptics()
   fFiberHalfZ = coreTubs->GetZHalfLength();
 
   std::cout << "Fiber optics (from material tables):\n"
-            << "  S-fiber: n_core=" << fN_CoreS << "  n_clad=" << fN_CladS
+            << "  S-fiber:       n_core=" << fN_CoreS << "  n_clad=" << fN_CladS
             << "  abs_len=" << fAbsLen_CoreS/m << " m\n"
-            << "  C-fiber: n_core=" << fN_CoreC << "  n_clad=" << fN_CladC
+            << "  C-fiber(Plastic): n_core=" << fN_CoreC << "  n_clad=" << fN_CladC
             << "  abs_len=" << fAbsLen_CoreC/m << " m\n"
+            << "  C-fiber(Quartz):  n_core=" << fN_CoreQ << "  n_clad=" << fN_CladQ
+            << "  abs_len=" << fAbsLen_CoreQ/m << " m\n"
             << "  R_core=" << fR_Core/mm << " mm"
             << "  half-z=" << fFiberHalfZ/cm << " cm" << std::endl;
 
@@ -869,6 +871,8 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
   const double N_CLAD_S     = fN_CladS;
   const double N_CORE_C     = fN_CoreC;
   const double N_CLAD_C     = fN_CladC;
+  const double N_CORE_Q     = fN_CoreQ;
+  const double N_CLAD_Q     = fN_CladQ;
   const double R_CORE       = fR_Core;
   const double FIBER_HALF_Z = fFiberHalfZ;
 
@@ -878,16 +882,19 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
   const G4int   trackID      = track->GetTrackID();
 
   // Identify fiber sub-volume
-  bool isCoreS = false, isCoreC = false, isCladS = false, isCladC = false;
+  bool isCoreS = false, isCoreC = false, isCoreQ = false;
+  bool isCladS = false, isCladC = false, isCladQ = false;
   const G4String detname =
       track->GetTouchable()->GetVolume()->GetLogicalVolume()->GetName();
-  if      (detname == "fiberCoreS") isCoreS = true;
-  else if (detname == "fiberCoreC") isCoreC = true;
-  else if (detname == "fiberCladS") isCladS = true;
-  else if (detname == "fiberCladC") isCladC = true;
+  if      (detname == "fiberCoreS")       isCoreS = true;
+  else if (detname == "fiberCorePlastic") isCoreC = true;
+  else if (detname == "fiberCoreQuartz")  isCoreQ = true;
+  else if (detname == "fiberCladS")       isCladS = true;
+  else if (detname == "fiberCladPlastic") isCladC = true;
+  else if (detname == "fiberCladQuartz")  isCladQ = true;
   else { track->SetTrackStatus(fStopAndKill); return; }
 
-  const int fiberIdx  = (isCladS || isCladC) ? 0 : 1;
+  const int fiberIdx  = (isCladS || isCladC || isCladQ) ? 0 : 1;
   const int fiberNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx);
   const int rodNumber   = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 2);
   const int layerNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 3);
@@ -901,15 +908,18 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
   if (track->GetCurrentStepNumber() == 1)
   {
     // Count Cerenkov photons born in core (all rods)
-    if (isCoreS || isCoreC)
+    if (isCoreS || isCoreC || isCoreQ)
     {
       auto *cp = track->GetCreatorProcess();
       if (cp && cp->GetProcessName() == "Cerenkov")
-        hh->accumulateOPsCer(isCoreC, 1);
+      {
+        int fiberType = isCoreS ? 0 : (isCoreC ? 1 : 2); // 0=scint, 1=plastic, 2=quartz
+        hh->accumulateOPsCer(fiberType, 1);
+      }
     }
 
     // For non-sample rods, only core photons can be guided — skip clad-born photons
-    if (!isSampleRod && !(isCoreS || isCoreC))
+    if (!isSampleRod && !(isCoreS || isCoreC || isCoreQ))
     {
       track->SetTrackStatus(fStopAndKill);
       return;
@@ -922,8 +932,8 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
     photon.productionMomentum = track->GetMomentum() / GeV;
     photon.productionTime     = track->GetGlobalTime() / ns;
     photon.polarization       = track->GetPolarization();
-    photon.isCoreS = isCoreS; photon.isCoreC = isCoreC;
-    photon.isCladS = isCladS; photon.isCladC = isCladC;
+    photon.isCoreS = isCoreS; photon.isCoreC = isCoreC; photon.isCoreQ = isCoreQ;
+    photon.isCladS = isCladS; photon.isCladC = isCladC; photon.isCladQ = isCladQ;
     photon.productionFiber    = fiberNumber;
     photon.productionRod      = rodNumber;
     photon.productionLayer    = layerNumber;
@@ -935,11 +945,11 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
     }
 
     // Analytical TIR for core photons (same logic, all rods)
-    if (isCoreS || isCoreC)
+    if (isCoreS || isCoreC || isCoreQ)
     {
-      const double n_core = isCoreS ? N_CORE_S : N_CORE_C;
-      const double n_clad = isCoreS ? N_CLAD_S : N_CLAD_C;
-      const double abs_len = isCoreS ? fAbsLen_CoreS : fAbsLen_CoreC;
+      const double n_core = isCoreS ? N_CORE_S : (isCoreC ? N_CORE_C : N_CORE_Q);
+      const double n_clad = isCoreS ? N_CLAD_S : (isCoreC ? N_CLAD_C : N_CLAD_Q);
+      const double abs_len = isCoreS ? fAbsLen_CoreS : (isCoreC ? fAbsLen_CoreC : fAbsLen_CoreQ);
       computeAnalyticalTIR(photon,
                            track->GetMomentumDirection(),
                            preStepPoint->GetPosition(),

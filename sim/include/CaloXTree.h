@@ -14,8 +14,6 @@
 
 class TFile;
 class TTree;
-class TH1D;
-class TH2D;
 
 class CaloXHit;
 struct CaloXPhotonInfo;
@@ -53,15 +51,8 @@ public:
   //  called fro SteppingAction...
   void accumulateHits(CaloXHit aHit);
   void accumulateEnergy(double eleak, int type);
-  void accumulateOPsCer(bool isCoreC = 0, int nOPs = 1);
+  void accumulateOPsCer(int fiberType = 0, int nOPs = 1); // fiberType: 0=scint, 1=plastic, 2=quartz
   void saveBeamXYZEPxPyPz(string, int, float, float, float, float, float, float, float);
-
-  // for histogrming...
-  std::string title;
-  std::map<std::string, TH1D *> histo1D;
-  std::map<std::string, TH1D *>::iterator histo1Diter;
-  std::map<std::string, TH2D *> histo2D;
-  std::map<std::string, TH2D *>::iterator histo2Diter;
 
   vector<CaloXPhotonInfo> photonData;
 
@@ -118,10 +109,15 @@ private:
   map<int, double> szHits; // Z-slice  (nominal 2 cm/slice)  , edep-birk
   map<int, double> szEdep; // Z-slice  (nominal 2 cm/slice)  , edep
 
-  // in sherenkov fibers
+  // in plastic cherenkov fibers
   map<int, double> ctHits; // T-slice  (nominal 50 ps/slicen), n-photons
   map<int, double> czHits; // Z-slice  (nominal 2 cm/slice)  , n-photons
   map<int, double> czEdep; // Z-slice  (nominal 2 cm/slice)  , edep
+
+  // in quartz cherenkov fibers
+  map<int, double> qtHits; // T-slice  (nominal 50 ps/slicen), n-photons
+  map<int, double> qzHits; // Z-slice  (nominal 2 cm/slice)  , n-photons
+  map<int, double> qzEdep; // Z-slice  (nominal 2 cm/slice)  , edep
 
   int mRun;
   int mEvent;
@@ -184,7 +180,8 @@ private:
   double m_eLeaktruth_lt_z;
   double m_eInvisible;
   double m_eRodtruth;
-  double m_eCentruth;
+  double m_ePlatruth;  // plastic Cherenkov fiber edep
+  double m_eQuatruth;  // quartz Cherenkov fiber edep
   double m_eScintruth;
 
   // scintillation hit variables
@@ -201,9 +198,9 @@ private:
   vector<float> m_ph3dSS; // number of photons
   float m_sum3dSS;
 
-  // cherenkov hit variables
+  // plastic cherenkov hit variables
   int m_nhits3dCC;
-  vector<int> m_id3dCC; //  chnanel ID  xxxyyyttt
+  vector<int> m_id3dCC; //  channel ID  xxxyyyttt
   vector<int> m_type3dCC;
   vector<int> m_area3dCC;
   vector<int> m_ix3dCC;
@@ -214,6 +211,20 @@ private:
   vector<int> m_tslice3dCC;
   vector<float> m_ph3dCC; //  number of photons
   float m_sum3dCC;
+
+  // quartz cherenkov hit variables
+  int m_nhits3dQQ;
+  vector<int> m_id3dQQ; //  channel ID  xxxyyyttt
+  vector<int> m_type3dQQ;
+  vector<int> m_area3dQQ;
+  vector<int> m_ix3dQQ;
+  vector<int> m_iy3dQQ;
+  vector<int> m_ixx3dQQ;
+  vector<int> m_iyy3dQQ;
+  vector<int> m_zslice3dQQ;
+  vector<int> m_tslice3dQQ;
+  vector<float> m_ph3dQQ; //  number of photons
+  float m_sum3dQQ;
 
   // optical photon hit variables
   int mP_nOPs;
@@ -238,16 +249,19 @@ private:
   vector<int> mP_finalFiber;
   vector<int> mP_isCerenkov;
   vector<int> mP_isScintillation;
-  vector<bool> mP_isCoreC;
+  vector<bool> mP_isCoreC; // plastic Cherenkov
   vector<bool> mP_isCoreS;
-  vector<bool> mP_isCladC;
+  vector<bool> mP_isCoreQ; // quartz Cherenkov
+  vector<bool> mP_isCladC; // plastic Cherenkov
   vector<bool> mP_isCladS;
+  vector<bool> mP_isCladQ; // quartz Cherenkov
   vector<double> mP_pol_x;
   vector<double> mP_pol_y;
   vector<double> mP_pol_z;
 
-  int mP_nOPsCer;     // number of Cerenkov photons
-  int mP_nOPsCer_Cer; // number of Cerenkov photons in cherenkov fibers
+  int mP_nOPsCer;     // number of Cerenkov photons (total)
+  int mP_nOPsCer_Pla; // number of Cerenkov photons in plastic Cherenkov fibers
+  int mP_nOPsCer_Qua; // number of Cerenkov photons in quartz Cherenkov fibers
   int mP_nOPsCer_Sci; // number of Cerenkov photons in scintillation fibers
 
   // Meridional (pz-only) analytical result

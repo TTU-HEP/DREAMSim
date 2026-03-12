@@ -51,9 +51,11 @@ private:
   // populated lazily on first step (after Construct())
   bool   fOpticsInitialised = false;
   double fN_CoreS, fN_CladS;   // S-fiber: Polystyrene core, PMMA_Clad cladding
-  double fN_CoreC, fN_CladC;   // C-fiber: PMMA core, Fluorinated_Polymer cladding
+  double fN_CoreC, fN_CladC;   // Plastic C-fiber: PMMA core, Fluorinated_Polymer cladding
+  double fN_CoreQ, fN_CladQ;   // Quartz C-fiber: Fused_Silica core, Hard_Polymer cladding
   double fAbsLen_CoreS;         // bulk absorption length, Polystyrene (mm)
   double fAbsLen_CoreC;         // bulk absorption length, PMMA (mm)
+  double fAbsLen_CoreQ;         // bulk absorption length, Fused_Silica (mm)
   double fR_Core;               // core radius, read from fiberCoreS logical volume
   double fFiberHalfZ;           // fiber half-length, read from fiberCoreS logical volume
   void   initOptics();          // performs the one-time lookup
@@ -61,6 +63,5 @@ private:
   void fillOPInfo(const G4Step *step, bool verbose = false);
 };
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #endif

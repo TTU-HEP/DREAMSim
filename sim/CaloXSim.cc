@@ -32,7 +32,6 @@
 
 using namespace std;
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 int main(int argc, char **argv)
 {
@@ -80,7 +79,6 @@ int main(int argc, char **argv)
                     .count();
   long long t1 = micros / 1000000LL;
   long long t2 = micros % 1000000LL;
-  std::cout << "Time-based seed components: t1=" << t1 << "   t2=" << t2 << std::endl;
   long seeds[2];
   int kseed = histo->getParamI("runNumber") + histo->getParamI("runSeq") * 3333;
   seeds[0] = long(t2) + long(kseed);
@@ -90,8 +88,7 @@ int main(int argc, char **argv)
   // seeds[1]=7999;
 
   G4Random::setTheSeeds(seeds);
-  G4Random::showEngineStatus();
-  std::cout << "seeds[0]=" << seeds[0] << "   seeds[1]=" << seeds[1] << std::endl;
+  std::cout << "Random seeds: " << seeds[0] << ", " << seeds[1] << std::endl;
 
   // Construct a serial run manager
   //
@@ -156,41 +153,29 @@ int main(int argc, char **argv)
   if (batchJob)
   {
     // batch mode
-    std::cout << "debug:  batch mode" << std::endl;
     G4String command = "/control/execute ";
-    cout << "command: " << command << endl;
-    UImanager->ApplyCommand(command + macro); // macro does not have /run/beamOn 100
+    UImanager->ApplyCommand(command + macro);
 
     //    beams are now defined in CaloXPrimaryGeneratorAction...
     // command="/gun/particle "+histo->getParamS("gun_particle");
-    // cout<<"command: "<<command<<endl;
     // UImanager->ApplyCommand(command);
 
     // command="/gun/energy "+histo->getParamS("gun_energy")+" GeV";
-    // cout<<"command: "<<command<<endl;
-    // UImanager->ApplyCommand(command);;
+    // UImanager->ApplyCommand(command);
 
-    // string evtmax="100";
     command = "/run/beamOn " + histo->getParamS("numberOfEvents");
-    cout << "command: " << command << endl;
     UImanager->ApplyCommand(command);
   }
   else
   {
     // interactive mode
-    std::cout << "debug:  interactive mode" << std::endl;
     UImanager->ApplyCommand("/control/execute init_vis.mac");
-    std::cout << "debug:  interactive mode, step 2" << std::endl;
     ui->SessionStart();
     delete ui;
   }
 
   // Job termination
-  std::cout << "Job termination..." << std::endl;
   histo->EndJob();
-  std::cout << "after histo->EndJob()..." << std::endl;
-
-  G4Random::showEngineStatus();
   // Free the store: user actions, physics_list and detector_description are
   // owned and deleted by the run manager, so they should not be deleted
   // in the main() program !
@@ -200,4 +185,3 @@ int main(int argc, char **argv)
   delete runManager;
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo.....

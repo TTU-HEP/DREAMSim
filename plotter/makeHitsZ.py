@@ -1,21 +1,53 @@
 """
 makeHitsZ.py — energy deposition and Cherenkov photon z-profile plots
 
+Produces plots for scintillation (S-fiber) and two Cherenkov fiber types
+(C-Plastic, C-Quartz) overlaid on shared canvases where relevant.
+
+Output plots
+------------
+  - Energy depositions: eCalo, eTotal, eRod, ePlatruth, eQuatruth, eScintruth, ...
+  - Hit distributions vs x / y / z / r
+  - Cherenkov photon z-profiles: Plastic and Quartz overlaid
+  - Capture-angle distributions: skew and meridional modes
+  - Analytical arrival-time distributions and 2D (time vs z) histograms
+  - Profile plots (mean arrival time vs z) with pol1 fits and fit-parameter
+    text boxes; fit ranges: ele [-100, -50] cm, pion [-100, 10] cm
+
+Color coding
+------------
+  Color encodes particle type (by label index):
+    index 0 — Plastic: kRed,    Quartz: kPink+6
+    index 1 — Plastic: kBlue,   Quartz: kAzure+6
+    index 2 — Plastic: kGreen+2, Quartz: kTeal+3
+  Legend height is auto-sized to 0.05 * n_entries;
+  two-column layout is used automatically when entries > 6.
+
+Suffix conventions
+------------------
+  If "rotate" appears in the suffix, the meridional time axis is widened
+  to [0, 16] ns instead of the default [8, 15] ns.
+
 Usage examples
 --------------
-# Compare same particle at different positions (each gets its own color)
-python makeHitsZ.py \
-    --input ele_center inputs/electrons_center.txt \
-    --input ele_x5y0   inputs/electrons_x5y0.txt  \
-    --input ele_x10y0  inputs/electrons_x10y0.txt \
+# Single particle type
+python makeHitsZ.py --ele inputs/electrons_40GeV.txt --energy 40 --suffix ele_40GeV
+
+# Overlay electrons and pions (Plastic/Quartz get distinct color families)
+python makeHitsZ.py \\
+    --ele  inputs/electrons_40GeV.txt \\
+    --pion inputs/pions_40GeV.txt \\
+    --energy 40 --suffix elePion_40GeV
+
+# Position scan (each label gets its own color)
+python makeHitsZ.py \\
+    --input ele_center inputs/electrons_center.txt \\
+    --input ele_x5y0   inputs/electrons_x5y0.txt  \\
+    --input ele_x10y0  inputs/electrons_x10y0.txt \\
     --energy 40 --suffix pos_scan_40GeV
 
-# Mix particle types and position labels freely
-python makeHitsZ.py \
-    --ele  inputs/electrons_40GeV.txt \
-    --pion inputs/pions_40GeV.txt \
-    --input ele_offset inputs/electrons_offset.txt \
-    --energy 40 --suffix mixed_40GeV
+# Rotated geometry (widens meridional time range)
+python makeHitsZ.py --ele inputs/electrons_rotated.txt --energy 40 --suffix ele_40GeV_rotate
 
 # Replot from a previously saved ROOT file (fast, no re-reading simulation)
 python makeHitsZ.py --from-root hitsZ_40GeV.root --energy 40 --suffix 40GeV_replot
@@ -38,6 +70,10 @@ from utils import (
     load_calibration,
     energy_axis_ranges,
     get_colors,
+    lpos,
+    make_fit_pave,
+    PLA_COLORS, QUA_COLORS,
+    PLA_MARKERS, QUA_MARKERS,
 )
 
 # ---------------------------------------------------------------------------
@@ -53,18 +89,24 @@ CENTER_LAYER_MAX =  52
 
 hnames =  [
         "eLeaktruth", "eCalotruth", "eTotaltruth", "eTotalGeant",
-        "eRodtruth", "eCentruth", "eScintruth",
-        "nOPsCer_Cer", "nOPsCer_Sci", "nOPsCer_Cer_perGeV", "nOPsCer_Sci_perGeV",
+        "eRodtruth", "ePlatruth", "eQuatruth", "eScintruth",
+        "nOPsCer_Pla", "nOPsCer_Qua", "nOPsCer_Sci",
+        "nOPsCer_Pla_perGeV", "nOPsCer_Qua_perGeV", "nOPsCer_Sci_perGeV",
         "truthhit_x", "truthhit_y", "truthhit_z", "truthhit_r",
-        "truthhit_z_Cer", "truthhit_z_Cer_center",
-        "angle_skew", "angle_meridional",
-        "time_skew", "time_meridional",
+        "truthhit_z_Pla", "truthhit_z_Pla_center",
+        "truthhit_z_Qua", "truthhit_z_Qua_center",
+        "angle_skew_Pla", "angle_skew_Qua",
+        "angle_meridional_Pla", "angle_meridional_Qua",
+        "time_skew_Pla", "time_skew_Qua",
+        "time_meridional_Pla", "time_meridional_Qua",
         # 2D
         "truthhit_x_vs_truthhit_y", "truthhit_x_vs_truthhit_z", "truthhit_y_vs_truthhit_z",
         "truthhit_r_vs_truthhit_z",
         "time_vs_truthhit_z", "time_vs_truthhit_r",
-        "time_skew_vs_truthhit_z", "time_meridional_vs_truthhit_z",
-        "time_skew_vs_z_prof", "time_meridional_vs_z_prof",
+        "time_skew_vs_truthhit_z_Pla", "time_skew_vs_truthhit_z_Qua",
+        "time_meridional_vs_truthhit_z_Pla", "time_meridional_vs_truthhit_z_Qua",
+        "time_skew_vs_z_prof_Pla", "time_skew_vs_z_prof_Qua",
+        "time_meridional_vs_z_prof_Pla", "time_meridional_vs_z_prof_Qua",
     ]
 
 # ---------------------------------------------------------------------------
@@ -94,32 +136,42 @@ def build_rdfs_with_defines(particle_files, nEvts=None, max_files=100):
             .Define("truthhit_r",
                     f"sqrt((truthhit_x-{BEAM_X})*(truthhit_x-{BEAM_X})"
                     f"+(truthhit_y-({BEAM_Y}))*(truthhit_y-({BEAM_Y})))")
-            .Define("nOPsCer_Cer_perGeV", "nOPsCer_Cer / eCentruth")
+            .Define("nOPsCer_Pla_perGeV", "nOPsCer_Pla / ePlatruth")
+            .Define("nOPsCer_Qua_perGeV", "nOPsCer_Qua / eQuatruth")
             .Define("nOPsCer_Sci_perGeV", "nOPsCer_Sci / eScintruth")
             .Define("eScinSummed",
                     "Sum(truthhit_edep * (truthhit_calotype == 2))")
             .Define("eCentrSummed",
                     "Sum(truthhit_edep * (truthhit_calotype == 3))")
+            .Define("eQentrSummed",
+                    "Sum(truthhit_edep * (truthhit_calotype == 4))")
             .Define("isCenterHit",
                     f"(truthhit_rodNumber   > {CENTER_ROD_MIN}   &&"
                     f" truthhit_rodNumber   < {CENTER_ROD_MAX}   &&"
                     f" truthhit_layerNumber > {CENTER_LAYER_MIN} &&"
                     f" truthhit_layerNumber < {CENTER_LAYER_MAX})")
-            .Define("nCerPho",            "truthhit_ncercap * isCenterHit")
+            .Define("nCerPho_Pla",        "truthhit_ncercap * (truthhit_calotype == 3) * isCenterHit")
+            .Define("nCerPho_Qua",        "truthhit_ncercap * (truthhit_calotype == 4) * isCenterHit")
             .Define("eweight",            f"truthhit_edep / {n}")
             .Define("evt_weight",         f"1.0 / {n}")
-            .Define("nCerPho_perEvt",     f"truthhit_ncercap / {n}")
-            .Define("nCerPho_perEvt_center", f"nCerPho / {n}")
+            .Define("nCerPho_Pla_perEvt", f"truthhit_ncercap * (truthhit_calotype == 3) / {n}")
+            .Define("nCerPho_Qua_perEvt", f"truthhit_ncercap * (truthhit_calotype == 4) / {n}")
+            .Define("nCerPho_Pla_perEvt_center", f"nCerPho_Pla / {n}")
+            .Define("nCerPho_Qua_perEvt_center", f"nCerPho_Qua / {n}")
         )
-        # define skew and Meridional selections
+        # define skew and meridional selections, split by fiber type (Plastic / Quartz)
         rdfs[part] = (
             rdfs[part]
-            .Define("is_skew", f"(OP_mom_produced_z > 0 && OP_isCoreC && OP_isCaptured_s && OP_isAttenuated_s == 0) / {n}")
-            .Define("is_meridional", f"(OP_mom_produced_z > 0 && OP_isCoreC && OP_isCaptured_m && OP_isAttenuated_m == 0) / {n}")
-            .Define("is_center_op", f"OP_productionRod > {CENTER_ROD_MIN} && OP_productionRod < {CENTER_ROD_MAX} && OP_productionLayer > {CENTER_LAYER_MIN} && OP_productionLayer < {CENTER_LAYER_MAX}")
-            .Define("is_skew_center", "is_skew * is_center_op")
-            .Define("is_meridional_center", "is_meridional * is_center_op")
-            .Define("angle_skew", "ROOT::VecOps::cos(OP_captureAngle_s)") 
+            .Define("is_skew_Pla",      f"(OP_mom_produced_z > 0 && OP_isCoreC && OP_isCaptured_s && OP_isAttenuated_s == 0) / {n}")
+            .Define("is_skew_Qua",      f"(OP_mom_produced_z > 0 && OP_isCoreQ && OP_isCaptured_s && OP_isAttenuated_s == 0) / {n}")
+            .Define("is_meridional_Pla",f"(OP_mom_produced_z > 0 && OP_isCoreC && OP_isCaptured_m && OP_isAttenuated_m == 0) / {n}")
+            .Define("is_meridional_Qua",f"(OP_mom_produced_z > 0 && OP_isCoreQ && OP_isCaptured_m && OP_isAttenuated_m == 0) / {n}")
+            .Define("is_center_op",     f"OP_productionRod > {CENTER_ROD_MIN} && OP_productionRod < {CENTER_ROD_MAX} && OP_productionLayer > {CENTER_LAYER_MIN} && OP_productionLayer < {CENTER_LAYER_MAX}")
+            .Define("is_skew_Pla_center",       "is_skew_Pla       * is_center_op")
+            .Define("is_skew_Qua_center",       "is_skew_Qua       * is_center_op")
+            .Define("is_meridional_Pla_center", "is_meridional_Pla * is_center_op")
+            .Define("is_meridional_Qua_center", "is_meridional_Qua * is_center_op")
+            .Define("angle_skew",       "ROOT::VecOps::cos(OP_captureAngle_s)")
             .Define("angle_meridional", "ROOT::VecOps::cos(OP_captureAngle_m)")
         )
 
@@ -161,8 +213,10 @@ def book_histos(rdfs, book, suffix):
             (f"eTotalGeant_{tag}",   "eTotalGeant",  50, *book["eTotalGeant"]), "eTotalGeant")
         histos["eRodtruth"][part] = rdf.Histo1D(
             (f"eRodtruth_{tag}",     "eRodtruth",    50, *book["eRod"]),     "eRodtruth")
-        histos["eCentruth"][part] = rdf.Histo1D(
-            (f"eCentruth_{tag}",     "eCentruth",    50, *book["eCentruth"]),"eCentruth")
+        histos["ePlatruth"][part] = rdf.Histo1D(
+            (f"ePlatruth_{tag}",     "ePlatruth",    50, *book["ePlatruth"]),"ePlatruth")
+        histos["eQuatruth"][part] = rdf.Histo1D(
+            (f"eQuatruth_{tag}",     "eQuatruth",    50, *book["ePlatruth"]),"eQuatruth")
         histos["eScintruth"][part] = rdf.Histo1D(
             (f"eScintruth_{tag}",    "eScintruth",   50, *book["eScintruth"]),"eScintruth")
 
@@ -175,51 +229,85 @@ def book_histos(rdfs, book, suffix):
             (f"truthhit_z_{tag}", "truthhit_z", 200, z_lo, z_hi), "truthhit_z", "eweight")
         histos["truthhit_r"][part] = rdf.Histo1D(
             (f"truthhit_r_{tag}", "truthhit_r", 50, 0, 30), "truthhit_r", "eweight")
-        histos["truthhit_z_Cer"][part] = rdf.Histo1D(
-            (f"truthhit_z_Cer_{tag}", "truthhit_z_Cer", 200, z_lo, z_hi),
-            "truthhit_z", "nCerPho_perEvt")
-        histos["truthhit_z_Cer_center"][part] = rdf.Histo1D(
-            (f"truthhit_z_Cer_center_{tag}", "truthhit_z_Cer_center", 200, z_lo, z_hi),
-            "truthhit_z", "nCerPho_perEvt_center")
-        histos["angle_skew"][part] = rdf.Histo1D(
-            (f"angle_skew_{tag}", "angle_skew", 50, 0, 1), "angle_skew", "is_skew_center")
-        histos["angle_meridional"][part] = rdf.Histo1D(
-            (f"angle_meridional_{tag}", "angle_meridional", 50, 0, 1), "angle_meridional", "is_meridional_center")
-        histos["time_skew"][part] = rdf.Histo1D(
-            (f"time_skew_{tag}", "time_skew", 50, t_min, t_max), "OP_analyticalArrivalTime_s", "is_skew_center")
-        histos["time_meridional"][part] = rdf.Histo1D(
-            (f"time_meridional_{tag}", "time_meridional", 50, t_min, t_max), "OP_analyticalArrivalTime_m", "is_meridional_center")
+        # Cherenkov z-profiles — Plastic and Quartz separately
+        histos["truthhit_z_Pla"][part] = rdf.Histo1D(
+            (f"truthhit_z_Pla_{tag}", "truthhit_z_Pla", 200, z_lo, z_hi),
+            "truthhit_z", "nCerPho_Pla_perEvt")
+        histos["truthhit_z_Pla_center"][part] = rdf.Histo1D(
+            (f"truthhit_z_Pla_center_{tag}", "truthhit_z_Pla_center", 200, z_lo, z_hi),
+            "truthhit_z", "nCerPho_Pla_perEvt_center")
+        histos["truthhit_z_Qua"][part] = rdf.Histo1D(
+            (f"truthhit_z_Qua_{tag}", "truthhit_z_Qua", 200, z_lo, z_hi),
+            "truthhit_z", "nCerPho_Qua_perEvt")
+        histos["truthhit_z_Qua_center"][part] = rdf.Histo1D(
+            (f"truthhit_z_Qua_center_{tag}", "truthhit_z_Qua_center", 200, z_lo, z_hi),
+            "truthhit_z", "nCerPho_Qua_perEvt_center")
+        # Capture angle — Plastic and Quartz
+        histos["angle_skew_Pla"][part] = rdf.Histo1D(
+            (f"angle_skew_Pla_{tag}", "angle_skew_Pla", 50, 0, 1), "angle_skew", "is_skew_Pla_center")
+        histos["angle_skew_Qua"][part] = rdf.Histo1D(
+            (f"angle_skew_Qua_{tag}", "angle_skew_Qua", 50, 0, 1), "angle_skew", "is_skew_Qua_center")
+        histos["angle_meridional_Pla"][part] = rdf.Histo1D(
+            (f"angle_meridional_Pla_{tag}", "angle_meridional_Pla", 50, 0, 1), "angle_meridional", "is_meridional_Pla_center")
+        histos["angle_meridional_Qua"][part] = rdf.Histo1D(
+            (f"angle_meridional_Qua_{tag}", "angle_meridional_Qua", 50, 0, 1), "angle_meridional", "is_meridional_Qua_center")
+        # Arrival time — Plastic and Quartz
+        histos["time_skew_Pla"][part] = rdf.Histo1D(
+            (f"time_skew_Pla_{tag}", "time_skew_Pla", 500, t_min, t_max), "OP_analyticalArrivalTime_s", "is_skew_Pla_center")
+        histos["time_skew_Qua"][part] = rdf.Histo1D(
+            (f"time_skew_Qua_{tag}", "time_skew_Qua", 500, t_min, t_max), "OP_analyticalArrivalTime_s", "is_skew_Qua_center")
+        histos["time_meridional_Pla"][part] = rdf.Histo1D(
+            (f"time_meridional_Pla_{tag}", "time_meridional_Pla", 500, t_min, t_max), "OP_analyticalArrivalTime_m", "is_meridional_Pla_center")
+        histos["time_meridional_Qua"][part] = rdf.Histo1D(
+            (f"time_meridional_Qua_{tag}", "time_meridional_Qua", 500, t_min, t_max), "OP_analyticalArrivalTime_m", "is_meridional_Qua_center")
 
         # --- 2D spatial ---
+        # Convention: a_vs_b → a on y-axis, b on x-axis
         histos["truthhit_x_vs_truthhit_y"][part] = rdf.Histo2D(
-            (f"truthhit_x_vs_truthhit_y_{tag}", "", 60, -30, 30, 50, -20, 20),
-            "truthhit_x", "truthhit_y", "eweight")
+            (f"truthhit_x_vs_truthhit_y_{tag}", "", 50, -20, 20, 60, -30, 30),
+            "truthhit_y", "truthhit_x", "eweight")
         histos["truthhit_x_vs_truthhit_z"][part] = rdf.Histo2D(
-            (f"truthhit_x_vs_truthhit_z_{tag}", "", 60, -30, 30, 100, z_lo, z_hi),
-            "truthhit_x", "truthhit_z", "eweight")
+            (f"truthhit_x_vs_truthhit_z_{tag}", "", 100, z_lo, z_hi, 60, -30, 30),
+            "truthhit_z", "truthhit_x", "eweight")
         histos["truthhit_y_vs_truthhit_z"][part] = rdf.Histo2D(
-            (f"truthhit_y_vs_truthhit_z_{tag}", "", 60, -30, 30, 100, z_lo, z_hi),
-            "truthhit_y", "truthhit_z", "eweight")
+            (f"truthhit_y_vs_truthhit_z_{tag}", "", 100, z_lo, z_hi, 60, -30, 30),
+            "truthhit_z", "truthhit_y", "eweight")
         histos["truthhit_r_vs_truthhit_z"][part] = rdf.Histo2D(
-            (f"truthhit_r_vs_truthhit_z_{tag}", "", 50, 0, 40, 100, z_lo, z_hi),
-            "truthhit_r", "truthhit_z", "eweight")
-        
-        histos["time_skew_vs_truthhit_z"][part] = rdf.Histo2D(
-            (f"time_skew_vs_truthhit_z_{tag}", "", 50, 0, t_max, 100, z_lo, z_hi),
-            "OP_analyticalArrivalTime_s", "OP_pos_produced_z", "is_skew_center")
-        histos["time_meridional_vs_truthhit_z"][part] = rdf.Histo2D(
-            (f"time_meridional_vs_truthhit_z_{tag}", "", 50, 0, t_max, 100, z_lo, z_hi),
-            "OP_analyticalArrivalTime_m", "OP_pos_produced_z", "is_meridional_center")
-        
-        ## --- profile: mean analytical arrival time vs production z (RMS error bars) ---
-        histos["time_skew_vs_z_prof"][part] = rdf.Profile1D(
+            (f"truthhit_r_vs_truthhit_z_{tag}", "", 100, z_lo, z_hi, 50, 0, 40),
+            "truthhit_z", "truthhit_r", "eweight")
+
+        # 2D time vs z — Plastic and Quartz (time on y-axis, z on x-axis)
+        histos["time_skew_vs_truthhit_z_Pla"][part] = rdf.Histo2D(
+            (f"time_skew_vs_truthhit_z_Pla_{tag}", "", 100, z_lo, z_hi, 500, 0, t_max),
+            "OP_pos_produced_z", "OP_analyticalArrivalTime_s", "is_skew_Pla_center")
+        histos["time_skew_vs_truthhit_z_Qua"][part] = rdf.Histo2D(
+            (f"time_skew_vs_truthhit_z_Qua_{tag}", "", 100, z_lo, z_hi, 500, 0, t_max),
+            "OP_pos_produced_z", "OP_analyticalArrivalTime_s", "is_skew_Qua_center")
+        t_mer_lo, t_mer_hi = book["time_meridional"]
+        histos["time_meridional_vs_truthhit_z_Pla"][part] = rdf.Histo2D(
+            (f"time_meridional_vs_truthhit_z_Pla_{tag}", "", 100, z_lo, z_hi, 500, t_mer_lo, t_mer_hi),
+            "OP_pos_produced_z", "OP_analyticalArrivalTime_m", "is_meridional_Pla_center")
+        histos["time_meridional_vs_truthhit_z_Qua"][part] = rdf.Histo2D(
+            (f"time_meridional_vs_truthhit_z_Qua_{tag}", "", 100, z_lo, z_hi, 500, t_mer_lo, t_mer_hi),
+            "OP_pos_produced_z", "OP_analyticalArrivalTime_m", "is_meridional_Qua_center")
+
+        ## --- profile: mean analytical arrival time vs production z — Plastic and Quartz ---
+        histos["time_skew_vs_z_prof_Pla"][part] = rdf.Profile1D(
             ROOT.RDF.TProfile1DModel(
-                f"time_skew_vs_z_prof_{tag}", "", 100, z_lo, z_hi, "s"),
-            "OP_pos_produced_z", "OP_analyticalArrivalTime_s", "is_skew_center")
-        histos["time_meridional_vs_z_prof"][part] = rdf.Profile1D(
+                f"time_skew_vs_z_prof_Pla_{tag}", "", 100, z_lo, z_hi, "s"),
+            "OP_pos_produced_z", "OP_analyticalArrivalTime_s", "is_skew_Pla_center")
+        histos["time_skew_vs_z_prof_Qua"][part] = rdf.Profile1D(
             ROOT.RDF.TProfile1DModel(
-                f"time_meridional_vs_z_prof_{tag}", "", 100, z_lo, z_hi, "s"),
-            "OP_pos_produced_z", "OP_analyticalArrivalTime_m", "is_meridional_center")
+                f"time_skew_vs_z_prof_Qua_{tag}", "", 100, z_lo, z_hi, "s"),
+            "OP_pos_produced_z", "OP_analyticalArrivalTime_s", "is_skew_Qua_center")
+        histos["time_meridional_vs_z_prof_Pla"][part] = rdf.Profile1D(
+            ROOT.RDF.TProfile1DModel(
+                f"time_meridional_vs_z_prof_Pla_{tag}", "", 100, z_lo, z_hi, "s"),
+            "OP_pos_produced_z", "OP_analyticalArrivalTime_m", "is_meridional_Pla_center")
+        histos["time_meridional_vs_z_prof_Qua"][part] = rdf.Profile1D(
+            ROOT.RDF.TProfile1DModel(
+                f"time_meridional_vs_z_prof_Qua_{tag}", "", 100, z_lo, z_hi, "s"),
+            "OP_pos_produced_z", "OP_analyticalArrivalTime_m", "is_meridional_Qua_center")
         
     return histos
 
@@ -228,7 +316,7 @@ def book_histos(rdfs, book, suffix):
 # Step 3 — draw histograms
 # ---------------------------------------------------------------------------
 
-def draw_histos(histos, draw, suffix, outdir, labels, calib=None):
+def draw_histos(histos, draw, suffix, outdir, labels, calib=None, fit_group=None):
     """
     Produce all output plots.
 
@@ -244,67 +332,112 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None):
     ensure_dir(outdir)
     colors = get_colors(labels)
     z_lo, z_hi = draw["z"]
-    t_min, t_max       = draw["time"]
+    t_min, t_max = draw["time"]
+    t_range = {"skew": draw["time_skew"], "meridional": draw["time_meridional"]}
+    if "rotate" in suffix:
+        t_range["meridional"] = (0.0, 16.0)
 
     def vals(n): return [histos[n][l] for l in labels if l in histos[n]]
     def keys(n): return [l           for l in labels if l in histos[n]]
 
+    # For Cherenkov plots: overlay Plastic and Quartz on the same canvas,
+    # labelling as "<label> (Plastic)" and "<label> (Quartz)".
+    # Colors are paired per particle: Plastic and Quartz of the same particle
+    # share a color family; different particles get different color families.
+    # This avoids duplicate colors when multiple particle types are plotted.
+    def cer_vals(n_pla, n_qua):
+        v = []
+        for l in labels:
+            if l in histos[n_pla]: v.append(histos[n_pla][l])
+            if l in histos[n_qua]: v.append(histos[n_qua][l])
+        return v
+    def cer_keys(n_pla, n_qua):
+        k = []
+        for l in labels:
+            if l in histos[n_pla]: k.append(f"{l} (Plastic)")
+            if l in histos[n_qua]: k.append(f"{l} (Quartz)")
+        return k
+    def cer_colors(n_pla, n_qua):
+        c = []
+        for i, l in enumerate(labels):
+            if l in histos[n_pla]: c.append(PLA_COLORS[i % len(PLA_COLORS)])
+            if l in histos[n_qua]: c.append(QUA_COLORS[i % len(QUA_COLORS)])
+        return c
+    def cer_markers(n_pla, n_qua):
+        m = []
+        for i, l in enumerate(labels):
+            if l in histos[n_pla]: m.append(PLA_MARKERS[i % len(PLA_MARKERS)])
+            if l in histos[n_qua]: m.append(QUA_MARKERS[i % len(QUA_MARKERS)])
+        return m
+
     args1d = dict(dology=True, donormalize=True, mycolors=colors,
                   MCOnly=True, addOverflow=True, addUnderflow=True,
-                  outdir=outdir, legendPos = [0.60, 0.60, 0.90, 0.90])
-    
+                  outdir=outdir)
+
     def d1(hname, xlo, xhi, xlabel, outname):
-        DrawHistos(vals(hname), keys(hname),
+        k = keys(hname)
+        DrawHistos(vals(hname), k,
                    xlo, xhi, xlabel, 1e-3, 1e2, "Fraction of events",
-                   outname + "_" + suffix, **args1d)
+                   outname + "_" + suffix, **lpos(k), **args1d)
 
     d1("eLeaktruth",        *draw["eLeak"],            "Leakage Energy [GeV]",        "eLeaktruth")
     d1("eCalotruth",        *draw["eCalo"],             "Calo Energy [GeV]",           "eCalotruth")
     d1("eTotaltruth",       *draw["eTotal"],            "Total Energy [GeV]",          "eTotaltruth")
     d1("eTotalGeant",       *draw["eTotalGeant"],       "Total Visible Energy [GeV]",  "eTotalGeant")
     d1("eRodtruth",         *draw["eRod"],              "Rod Energy [GeV]",            "eRodtruth")
-    d1("eCentruth",         *draw["eCentruth"],         "C-Fiber Energy [GeV]",        "eCentruth")
-    d1("eScintruth",        *draw["eScintruth"],        "S-Fiber Energy [GeV]",        "eScintruth")
-    #d1("nOPsCer_Cer",       *draw["nOPsCer_Cer"],       "N Cer OPs (C-fiber)",         "nOPsCer_Cer")
-    #d1("nOPsCer_Sci",       *draw["nOPsCer_Sci"],       "N Cer OPs (S-fiber)",         "nOPsCer_Sci")
-    #d1("nOPsCer_Cer_perGeV",*draw["nOPsCer_Cer_perGeV"],"N Cer OPs / GeV (C-fiber)",  "nOPsCer_Cer_perGeV")
-    #d1("nOPsCer_Sci_perGeV",*draw["nOPsCer_Sci_perGeV"],"N Cer OPs / GeV (S-fiber)",  "nOPsCer_Sci_perGeV")
+    d1("ePlatruth",         *draw["ePlatruth"],         "C-Fiber Energy, Plastic [GeV]", "ePlatruth")
+    d1("eQuatruth",         *draw["ePlatruth"],         "C-Fiber Energy, Quartz [GeV]",  "eQuatruth")
+    d1("eScintruth",        *draw["eScintruth"],        "S-Fiber Energy [GeV]",          "eScintruth")
 
     args_edep = {**args1d, "donormalize": False}
     
-    args_op = {**args1d, "donormalize": False, "drawoptions": ["hist,C"]*5}
     args_op = {**args1d, "donormalize": False}
 
     DrawHistos(vals("truthhit_x"), keys("truthhit_x"),
                -20, 20, "x [cm]", 1e-3, 1e2, "Deposited Energy [GeV]",
-               f"truthhit_x_{suffix}", **args_edep)
+               f"truthhit_x_{suffix}", **lpos(keys("truthhit_x")), **args_edep)
     DrawHistos(vals("truthhit_y"), keys("truthhit_y"),
                -20, 20, "y [cm]", 1e-3, 1e2, "Deposited Energy [GeV]",
-               f"truthhit_y_{suffix}", **args_edep)
+               f"truthhit_y_{suffix}", **lpos(keys("truthhit_y")), **args_edep)
     DrawHistos(vals("truthhit_z"), keys("truthhit_z"),
                z_lo, z_hi, "z [cm]", 1e-3, 1, "Deposited Energy [GeV]",
-               f"truthhit_z_{suffix}", **args_edep)
+               f"truthhit_z_{suffix}", **lpos(keys("truthhit_z")), **args_edep)
     DrawHistos(vals("truthhit_r"), keys("truthhit_r"),
                0, 30, "r [cm]", 1e-3, 1e2, "Deposited Energy [GeV]",
-               f"truthhit_r_{suffix}", **args_edep)
-    DrawHistos(vals("truthhit_z_Cer"), keys("truthhit_z_Cer"),
-               z_lo, z_hi, "z [cm]", 1e0, 5e3, "# C Photons",
-               f"truthhit_z_Cer_{suffix}", **args_edep)
-    DrawHistos(vals("truthhit_z_Cer_center"), keys("truthhit_z_Cer_center"),
-               z_lo, z_hi, "z [cm]", 1e0, 5e3, "# C Photons (Central)",
-               f"truthhit_z_Cer_center_{suffix}", **args_edep)
-    DrawHistos(vals("angle_skew"), keys("angle_skew"),
+               f"truthhit_r_{suffix}", **lpos(keys("truthhit_r")), **args_edep)
+    # Cherenkov z-profiles: Plastic and Quartz overlaid
+    _ck = cer_keys("truthhit_z_Pla", "truthhit_z_Qua")
+    DrawHistos(cer_vals("truthhit_z_Pla", "truthhit_z_Qua"), _ck,
+               z_lo, z_hi, "z [cm]", 1e0, 5e3, "# C Photons / event",
+               f"truthhit_z_Cer_{suffix}", **lpos(_ck),
+               **{**args_edep, "mycolors": cer_colors("truthhit_z_Pla", "truthhit_z_Qua")})
+    _ck = cer_keys("truthhit_z_Pla_center", "truthhit_z_Qua_center")
+    DrawHistos(cer_vals("truthhit_z_Pla_center", "truthhit_z_Qua_center"), _ck,
+               z_lo, z_hi, "z [cm]", 1e0, 5e3, "# C Photons / event (Central)",
+               f"truthhit_z_Cer_center_{suffix}", **lpos(_ck),
+               **{**args_edep, "mycolors": cer_colors("truthhit_z_Pla_center", "truthhit_z_Qua_center")})
+    # Capture angle: Plastic and Quartz overlaid
+    _ck = cer_keys("angle_skew_Pla", "angle_skew_Qua")
+    DrawHistos(cer_vals("angle_skew_Pla", "angle_skew_Qua"), _ck,
                0, 1, "Cosine of Capture Angle (Skew)", 1e0, 1e6, "Counts",
-               f"angle_skew_{suffix}", **args_edep)
-    DrawHistos(vals("angle_meridional"), keys("angle_meridional"),
+               f"angle_skew_{suffix}", **lpos(_ck),
+               **{**args_edep, "mycolors": cer_colors("angle_skew_Pla", "angle_skew_Qua")})
+    _ck = cer_keys("angle_meridional_Pla", "angle_meridional_Qua")
+    DrawHistos(cer_vals("angle_meridional_Pla", "angle_meridional_Qua"), _ck,
                0, 1, "Cosine of Capture Angle (Meridional)", 1e0, 1e6, "Counts",
-               f"angle_meridional_{suffix}", **args_edep)
-    DrawHistos(vals("time_skew"), keys("time_skew"),
-               t_min, t_max, "Analytical Arrival Time (Skew) [ns]", 1, 1e4, "Counts",
-               f"time_skew_{suffix}", **args_op)
-    DrawHistos(vals("time_meridional"), keys("time_meridional"),
-               t_min, t_max, "Analytical Arrival Time (Meridional) [ns]", 1, 1e4, "Counts",
-               f"time_meridional_{suffix}", **args_op)
+               f"angle_meridional_{suffix}", **lpos(_ck),
+               **{**args_edep, "mycolors": cer_colors("angle_meridional_Pla", "angle_meridional_Qua")})
+    # Arrival time: Plastic and Quartz overlaid
+    _ck = cer_keys("time_skew_Pla", "time_skew_Qua")
+    DrawHistos(cer_vals("time_skew_Pla", "time_skew_Qua"), _ck,
+               *t_range["skew"], "Analytical Arrival Time (Skew) [ns]", 1, 1e4, "Counts",
+               f"time_skew_{suffix}", **lpos(_ck),
+               **{**args_op, "mycolors": cer_colors("time_skew_Pla", "time_skew_Qua")})
+    _ck = cer_keys("time_meridional_Pla", "time_meridional_Qua")
+    DrawHistos(cer_vals("time_meridional_Pla", "time_meridional_Qua"), _ck,
+               *t_range["meridional"], "Analytical Arrival Time (Meridional) [ns]", 1, 1e4, "Counts",
+               f"time_meridional_{suffix}", **lpos(_ck),
+               **{**args_op, "mycolors": cer_colors("time_meridional_Pla", "time_meridional_Qua")})
 
     # --- 2D plots ---
     args2d = {**args_edep, "dology": False, "drawoptions": "colz",
@@ -313,60 +446,182 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None):
     
     args2d_op = args2d.copy()
     args2d_op["zmax"] = 2e3
-    args2d_op["zmin"] = 1e0
+    args2d_op["zmin"] = 1e-2
 
     for label in labels:
         if label not in histos["truthhit_x_vs_truthhit_y"]:
             continue
         DrawHistos([histos["truthhit_x_vs_truthhit_y"][label]], [],
-                   -30, 30, "x [cm]", -30, 30, "y [cm]",
+                   -20, 20, "y [cm]", -30, 30, "x [cm]",
                    f"truthhit_x_vs_y_{label}_{suffix}", **args2d)
         DrawHistos([histos["truthhit_x_vs_truthhit_z"][label]], [],
-                   -30, 30, "x [cm]", z_lo, z_hi, "z [cm]",
+                   z_lo, z_hi, "z [cm]", -30, 30, "x [cm]",
                    f"truthhit_x_vs_z_{label}_{suffix}", **args2d)
         DrawHistos([histos["truthhit_y_vs_truthhit_z"][label]], [],
-                   -30, 30, "y [cm]", z_lo, z_hi, "z [cm]",
+                   z_lo, z_hi, "z [cm]", -30, 30, "y [cm]",
                    f"truthhit_y_vs_z_{label}_{suffix}", **args2d)
         DrawHistos([histos["truthhit_r_vs_truthhit_z"][label]], [],
-                   0, 40, "r [cm]", z_lo, z_hi, "z [cm]",
+                   z_lo, z_hi, "z [cm]", 0, 40, "r [cm]",
                    f"truthhit_r_vs_z_{label}_{suffix}", **args2d)
-        DrawHistos([histos["time_skew_vs_truthhit_z"][label]], [],
-                   t_min, t_max, "Time [ns] (skew)", z_lo, z_hi, "z [cm]",
-                   f"time_skew_vs_z_{label}_{suffix}", **args2d_op)
-        DrawHistos([histos["time_meridional_vs_truthhit_z"][label]], [],
-                   t_min, t_max, "Time [ns] (Meridional)", z_lo, z_hi, "z [cm]",
-                   f"time_meridional_vs_z_{label}_{suffix}", **args2d_op)
+        for ftype in ("Pla", "Qua"):
+            hk = f"time_skew_vs_truthhit_z_{ftype}"
+            if label in histos[hk]:
+                DrawHistos([histos[hk][label]], [],
+                           z_lo, z_hi, "z [cm]", t_min, t_max, "Time [ns] (Skew)",
+                           f"time_skew_vs_z_{ftype}_{label}_{suffix}", **args2d_op)
+            hk = f"time_meridional_vs_truthhit_z_{ftype}"
+            if label in histos[hk]:
+                DrawHistos([histos[hk][label]], [],
+                           z_lo, z_hi, "z [cm]", *t_range["meridional"], "Time [ns] (Meridional)",
+                           f"time_meridional_vs_z_{ftype}_{label}_{suffix}", **args2d_op)
         
-    # ── Profile overlays: mean arrival time vs z, RMS error bars ─────────────
+    # ── Profile overlays: mean arrival time vs z, Plastic and Quartz overlaid ──
     args_prof = {**args1d, "dology": False, "donormalize": False}
-    #args_prof = dict(
-    #    dology=False, donormalize=False, MCOnly=True,
-    #    addOverflow=False, addUnderflow=False,
-    #)
-    markers = [20, 21, 22, 23, 24, 25, 26, 27]
+    markers = [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
 
-    prof_skew = vals("time_skew_vs_z_prof")
-    prof_meri = vals("time_meridional_vs_z_prof")
+    for mode, col_m, col_q in [
+        ("skew",       "time_skew_vs_z_prof_Pla",       "time_skew_vs_z_prof_Qua"),
+        ("meridional", "time_meridional_vs_z_prof_Pla", "time_meridional_vs_z_prof_Qua"),
+    ]:
+        pv = cer_vals(col_m, col_q)
+        pk = cer_keys(col_m, col_q)
+        pc = cer_colors(col_m, col_q)
+        pm = cer_markers(col_m, col_q)
+        if pv:
+            DrawHistos(
+                pv, pk,
+                z_lo, z_hi, "Production z [cm]",
+                *t_range[mode], f"Mean arrival time [ns] ({mode})",
+                f"time_{mode}_vs_z_prof_{suffix}",
+                drawoptions=["E1"] * len(pv),
+                markerstyles=pm,
+                **lpos(pk),
+                **{**args_prof, "mycolors": pc})
 
-    if prof_skew:
-        DrawHistos(
-            prof_skew, keys("time_skew_vs_z_prof"),
-            z_lo, z_hi, "Production z [cm]",
-            t_min, t_max + 5, "Mean arrival time [ns] (skew)",
-            f"time_skew_vs_z_prof_{suffix}",
-            drawoptions=["E1"] * len(prof_skew),
-            markerstyles=markers[:len(prof_skew)],
-            **args_prof)
+    # ── ProfileX from 2D time vs z — all labels × Plastic/Quartz on one canvas ──
+    # Each profile is fit with pol1; results shown in a TPaveText via extraToDraw.
+    fit_group = fit_group or []
+    for mode in ("skew", "meridional"):
+        hk_pla = f"time_{mode}_vs_truthhit_z_Pla"
+        hk_qua = f"time_{mode}_vs_truthhit_z_Qua"
+        t_profs, t_keys, t_cols, t_markers = [], [], [], []
+        fit_entries = []  # (legend_label, color, p0, p0err, p1, p1err)
+        # Fit ranges matched by label prefix: ele* -> ele range, pi* -> pion range
+        FIT_RANGES = {"ele": (-100, -50), "pi": (-100, 10)}
 
-    if prof_meri:
-        DrawHistos(
-            prof_meri, keys("time_meridional_vs_z_prof"),
-            z_lo, z_hi, "Production z [cm]",
-            t_min, t_max, "Mean arrival time [ns] (meridional)",
-            f"time_meridional_vs_z_prof_{suffix}",
-            drawoptions=["E1"] * len(prof_meri),
-            markerstyles=markers[:len(prof_meri)],
-            **args_prof)
+        _rotated = "rotate" in suffix
+
+        def _fit_range(lbl):
+            if _rotated:
+                return None   # rotated geometry: skip per-label fits; use fit_group instead
+            for prefix, rng in FIT_RANGES.items():
+                if lbl.startswith(prefix):
+                    return rng
+            return (z_lo, z_hi)
+
+        for i, label in enumerate(labels):
+            fit_range = _fit_range(label)
+            for hk, fib, col, mkr in [
+                (hk_pla, "Plastic", PLA_COLORS[i % len(PLA_COLORS)], PLA_MARKERS[i % len(PLA_MARKERS)]),
+                (hk_qua, "Quartz",  QUA_COLORS[i % len(QUA_COLORS)], QUA_MARKERS[i % len(QUA_MARKERS)]),
+            ]:
+                if label not in histos[hk]:
+                    continue
+                prof = histos[hk][label].ProfileX(f"{hk}_prof_{label}_{suffix}")
+                ROOT.SetOwnership(prof, False)
+                if fit_range is not None:
+                    prof.Fit("pol1", "QR", "", *fit_range)
+                f1 = prof.GetFunction("pol1") if fit_range is not None else None
+                if f1:
+                    f1.SetLineColor(col)
+                    f1.SetLineWidth(2)
+                    f1.SetLineStyle(2)
+                    fit_entries.append((f"{label} ({fib})", col,
+                                        f1.GetParameter(0), f1.GetParameter(1)))
+                t_profs.append(prof)
+                t_keys.append(f"{label} ({fib})")
+                t_cols.append(col)
+                t_markers.append(mkr)
+
+        if not t_profs:
+            continue
+
+        pave = make_fit_pave(fit_entries)
+
+        # Plot 1: profiles with pol1 fit lines and parameter box
+        DrawHistos(t_profs, t_keys,
+                   z_lo, z_hi, "z [cm]", *t_range[mode],
+                   f"Mean arrival time [ns] ({mode})",
+                   f"time_{mode}_vs_z_prof2d_{suffix}",
+                   drawoptions=["E1"] * len(t_profs) + ["same"],
+                   markerstyles=t_markers,
+                   **lpos(t_keys),
+                   extraToDraw=[pave],
+                   **{**args_prof, "mycolors": t_cols})
+
+        # Plot 2: profiles only, no fit lines
+        t_profs_nofit = []
+        for prof in t_profs:
+            p = prof.Clone(prof.GetName() + "_nofit")
+            ROOT.SetOwnership(p, False)
+            p.GetListOfFunctions().Clear()
+            t_profs_nofit.append(p)
+        DrawHistos(t_profs_nofit, t_keys,
+                   z_lo, z_hi, "z [cm]", *t_range[mode],
+                   f"Mean arrival time [ns] ({mode})",
+                   f"time_{mode}_vs_z_prof2d_nofit_{suffix}",
+                   drawoptions=["E1"] * len(t_profs_nofit) + ["same"],
+                   markerstyles=t_markers,
+                   **lpos(t_keys),
+                   **{**args_prof, "mycolors": t_cols})
+
+        # Plot 3: combined fit — only if --fit-group labels were given
+        grp_profs, grp_keys, grp_cols, grp_mkrs = [], [], [], []
+        grp_entries = []
+        grp_labels = [l for l in fit_group if l in labels]
+        if grp_labels:
+            # Group fit always covers the full detector z range
+            grp_fit_lo, grp_fit_hi = z_lo, z_hi
+            combined = {}  # fib -> (TProfile clone, color)
+            for i, label in enumerate(grp_labels):
+                for hk, fib, col, mkr in [
+                    (hk_pla, "Plastic", PLA_COLORS[i % len(PLA_COLORS)], PLA_MARKERS[i % len(PLA_MARKERS)]),
+                    (hk_qua, "Quartz",  QUA_COLORS[i % len(QUA_COLORS)], QUA_MARKERS[i % len(QUA_MARKERS)]),
+                ]:
+                    if label not in histos[hk]:
+                        continue
+                    prof = histos[hk][label].ProfileX(f"{hk}_grp_{label}_{suffix}")
+                    ROOT.SetOwnership(prof, False)
+                    if fib not in combined:
+                        cp = prof.Clone(f"grp_comb_{fib}_{mode}_{suffix}")
+                        ROOT.SetOwnership(cp, False)
+                        combined[fib] = (cp, col, mkr)
+                    else:
+                        combined[fib][0].Add(prof)
+            for fib, (cp, col, mkr) in combined.items():
+                cp.Fit("pol1", "QR", "", grp_fit_lo, grp_fit_hi)
+                f1 = cp.GetFunction("pol1")
+                if f1:
+                    f1.SetLineColor(col)
+                    f1.SetLineWidth(2)
+                    f1.SetLineStyle(2)
+                    grp_entries.append((f"Combined ({fib})", col,
+                                        f1.GetParameter(0), f1.GetParameter(1)))
+                grp_profs.append(cp)
+                grp_keys.append(f"Combined ({fib})")
+                grp_cols.append(col)
+                grp_mkrs.append(mkr)
+        if grp_profs:
+            grp_pave = make_fit_pave(grp_entries)
+            DrawHistos(grp_profs, grp_keys,
+                       z_lo, z_hi, "z [cm]", *t_range[mode],
+                       f"Mean arrival time [ns] ({mode}) — combined fit",
+                       f"time_{mode}_vs_z_prof2d_grpfit_{suffix}",
+                       drawoptions=["E1"] * len(grp_profs) + ["same"],
+                       markerstyles=grp_mkrs,
+                       **lpos(grp_keys),
+                       extraToDraw=[grp_pave],
+                       **{**args_prof, "mycolors": grp_cols})
 
 
 # ---------------------------------------------------------------------------
@@ -374,7 +629,7 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None):
 # ---------------------------------------------------------------------------
 
 def run(particle_files, suffix, beam_energy_gev,
-        from_root=None, calib_json=None, outdir=None, max_files=100):
+        from_root=None, calib_json=None, outdir=None, max_files=100, fit_group=None):
     """
     Parameters
     ----------
@@ -416,7 +671,8 @@ def run(particle_files, suffix, beam_energy_gev,
         save_histos_to_root(histos, root_cache)
 
     print("\nDrawing plots...")
-    draw_histos(histos, draw, suffix, outdir, labels, calib=calib)
+    draw_histos(histos, draw, suffix, outdir, labels, calib=calib,
+                fit_group=fit_group or [])
     print(f"\nDone. Plots in: {outdir}/")
 
 
@@ -461,6 +717,14 @@ def parse_args():
                    help="JSON calibration sidecar file (optional)")
     p.add_argument("--max-files", type=int, default=100, metavar="N",
                    help="Max ROOT files to read per label (default: 100)")
+    p.add_argument(
+        "--fit-group", nargs="+", metavar="LABEL", default=[],
+        help=(
+            "Labels to combine and fit together in a single pol1 fit "
+            "(one fit per fiber type). Saves an additional PDF alongside the "
+            "per-label profile plots. Repeatable: --fit-group ele_x0 ele_x5 ele_x10"
+        ),
+    )
     return p.parse_args()
 
 
@@ -500,6 +764,7 @@ if __name__ == "__main__":
         from_root       = args.from_root,
         calib_json      = args.calib,
         outdir          = args.outdir,
-        max_files       = args.max_files)
+        max_files       = args.max_files,
+        fit_group       = args.fit_group)
 
     print("Done")

@@ -98,7 +98,7 @@ rdfs = rdfs_new
 
 histos = OrderedDict()
 figures = ['eLeaktruth', 'eCalotruth', 'eTotaltruth', 'eTotalGeant',
-           'eRodtruth', 'eCentruth', 'eScintruth',
+           'eRodtruth', 'ePlatruth', 'eScintruth',
            'truthhit_x', 'truthhit_y', 'truthhit_z', 'truthhit_r',
            'time', 'time_zoomed',
            'truthhit_x_vs_truthhit_y', 'truthhit_x_vs_truthhit_z', 'truthhit_r_vs_truthhit_z',
@@ -146,8 +146,8 @@ for part, rdf in rdfs.items():
         ("eTotalGeant" + suffix, "eTotalGeant", 50, 80., 110.0), "eTotalGeant")
     histos['eRodtruth'][part] = rdf.Histo1D(
         ("eRodtruth" + suffix, "eRodtruth", 50, 50, 102.0), "eRodtruth")
-    histos['eCentruth'][part] = rdf.Histo1D(
-        ("eCentruth" + suffix, "eCentruth", 50, 1.0, 5.0), "eCentruth")
+    histos['ePlatruth'][part] = rdf.Histo1D(
+        ("ePlatruth" + suffix, "ePlatruth", 50, 1.0, 5.0), "ePlatruth")
     histos['eScintruth'][part] = rdf.Histo1D(
         ("eScintruth" + suffix, "eScintruth", 50, 1.0, 5.0), "eScintruth")
 
@@ -253,8 +253,8 @@ DrawHistos(list(histos['eTotalGeant'].values()), list(histos['eTotalGeant'].keys
 )), 80., 110, "Total 'Visible' Energy [GeV]", 1e-3, 1e2, "Fraction of events", "eTotalGeant", **args)
 DrawHistos(list(histos['eRodtruth'].values()), list(histos['eRodtruth'].keys(
 )), 50, 102, "Rod Energy [GeV]", 1e-3, 1e2, "Fraction of events", "eRodtruth", **args)
-DrawHistos(list(histos['eCentruth'].values()), list(histos['eCentruth'].keys(
-)), 1, 5, "CFiber Energy [GeV]", 1e-3, 1e2, "Fraction of events", "eCentruth", **args)
+DrawHistos(list(histos['ePlatruth'].values()), list(histos['ePlatruth'].keys(
+)), 1, 5, "CFiber Energy [GeV]", 1e-3, 1e2, "Fraction of events", "ePlatruth", **args)
 DrawHistos(list(histos['eScintruth'].values()), list(histos['eScintruth'].keys(
 )), 1, 5, "SFiber Energy [GeV]", 1e-3, 1e2, "Fraction of events", "eScintruth", **args)
 

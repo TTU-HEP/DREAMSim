@@ -43,7 +43,7 @@ def makePlots(elefile, pionfile, suffix=""):
         rdfs_new[part] = rdfs[part].Define( "eTotaltruth", "eLeaktruth + eCalotruth + eWorldtruth + eInvisible") \
             .Define("eTotalGeant", "eLeaktruth + eCalotruth + eWorldtruth") \
             .Define("truthhit_r", f"sqrt((truthhit_x-2.5)*(truthhit_x-2.5) + (truthhit_y+2.5)*(truthhit_y+2.5))") \
-            .Define("nOPsCer_Cer_perGeV", "nOPsCer_Cer / eCentruth") \
+            .Define("nOPsCer_Pla_perGeV", "nOPsCer_Pla / ePlatruth") \
             .Define("nOPsCer_Sci_perGeV", "nOPsCer_Sci / eScintruth") \
             .Define("eScinSummed", "Sum(truthhit_edep * (truthhit_calotype == 2))") \
             .Define("eCentrSummed", "Sum(truthhit_edep * (truthhit_calotype == 3))")
@@ -61,14 +61,14 @@ def makePlots(elefile, pionfile, suffix=""):
 
     histos = OrderedDict()
     figures = ['eLeaktruth', 'eCalotruth', 'eTotaltruth', 'eTotalGeant',
-               'eRodtruth', 'eCentruth', 'eScintruth',
+               'eRodtruth', 'ePlatruth', 'eScintruth',
                'truthhit_x', 'truthhit_y', 'truthhit_z', 'truthhit_r',
                'time', 'time_zoomed',
-               "nOPsCer_Cer", "nOPsCer_Sci", "nOPsCer_Cer_perGeV", "nOPsCer_Sci_perGeV",
-               "nOPsCer_Cer_vs_nOPsCer_Sci", "nOPsCer_Cer_vs_eCentruth", "nOPsCer_Sci_vs_eScintruth",
-               "nOPsCer_Cer_vs_eCentrSummed", "nOPsCer_Sci_vs_eScinSummed",
+               "nOPsCer_Pla", "nOPsCer_Sci", "nOPsCer_Pla_perGeV", "nOPsCer_Sci_perGeV",
+               "nOPsCer_Pla_vs_nOPsCer_Sci", "nOPsCer_Pla_vs_ePlatruth", "nOPsCer_Sci_vs_eScintruth",
+               "nOPsCer_Pla_vs_eCentrSummed", "nOPsCer_Sci_vs_eScinSummed",
                "eScinSummed_vs_eScintruth",
-               "nOPsCer_Cer_vs_eScintruth",
+               "nOPsCer_Pla_vs_eScintruth",
                'truthhit_x_vs_truthhit_y', 'truthhit_x_vs_truthhit_z', 'truthhit_r_vs_truthhit_z',
                'time_vs_truthhit_z', 'time_vs_truthhit_r']
     #evtlist = [1, 10, 20, 30, 40]
@@ -84,11 +84,11 @@ def makePlots(elefile, pionfile, suffix=""):
         histos[fig] = OrderedDict()
 
     values = OrderedDict()
-    values['eCentruth'] = 1.2
+    values['ePlatruth'] = 1.2
     values['eScintruth'] = 0.8
-    values['nOPsCer_Cer'] = 1.3e5
+    values['nOPsCer_Pla'] = 1.3e5
     values['nOPsCer_Sci'] = 1.0e5
-    values['nOPsCer_Cer_perGeV'] = values['nOPsCer_Cer'] / values['eCentruth']
+    values['nOPsCer_Pla_perGeV'] = values['nOPsCer_Pla'] / values['ePlatruth']
     values['nOPsCer_Sci_perGeV'] = values['nOPsCer_Sci'] / values['eScintruth']
 
     for part, rdf in rdfs.items():
@@ -104,8 +104,8 @@ def makePlots(elefile, pionfile, suffix=""):
             ("eTotalGeant" + suffix_h, "eTotalGeant", 50, 80., 110.0), "eTotalGeant")
         histos['eRodtruth'][part] = rdf.Histo1D(
             ("eRodtruth" + suffix_h, "eRodtruth", 50, 50, 102.0), "eRodtruth")
-        histos['eCentruth'][part] = rdf.Histo1D(
-            ("eCentruth" + suffix_h, "eCentruth", 50, 0, values["eCentruth"]), "eCentruth")
+        histos['ePlatruth'][part] = rdf.Histo1D(
+            ("ePlatruth" + suffix_h, "ePlatruth", 50, 0, values["ePlatruth"]), "ePlatruth")
         histos['eScintruth'][part] = rdf.Histo1D(
             ("eScintruth" + suffix_h, "eScintruth", 50, 0, values['eScintruth']), "eScintruth")
 
@@ -124,28 +124,28 @@ def makePlots(elefile, pionfile, suffix=""):
         histos['time_zoomed'][part] = rdf.Histo1D(
             ("time_zoomed" + suffix_h, "time_zoomed", 50, 0, 10), "truthhit_globaltime", "eweight")
 
-        histos['nOPsCer_Cer'][part] = rdf.Histo1D(
-            ("nOPsCer_Cer" + suffix_h, "nOPsCer_Cer", 50, 0, values["nOPsCer_Cer"]), "nOPsCer_Cer", "eweight")
+        histos['nOPsCer_Pla'][part] = rdf.Histo1D(
+            ("nOPsCer_Pla" + suffix_h, "nOPsCer_Pla", 50, 0, values["nOPsCer_Pla"]), "nOPsCer_Pla", "eweight")
         histos['nOPsCer_Sci'][part] = rdf.Histo1D(
             ("nOPsCer_Sci" + suffix_h, "nOPsCer_Sci", 50, 0, values["eScintruth"]), "nOPsCer_Sci", "eweight")
-        histos['nOPsCer_Cer_perGeV'][part] = rdf.Histo1D(
-            ("nOPsCer_Cer_perGeV" + suffix_h, "nOPsCer_Cer_perGeV", 50, 0, values["nOPsCer_Cer_perGeV"]), "nOPsCer_Cer_perGeV", "eweight")
+        histos['nOPsCer_Pla_perGeV'][part] = rdf.Histo1D(
+            ("nOPsCer_Pla_perGeV" + suffix_h, "nOPsCer_Pla_perGeV", 50, 0, values["nOPsCer_Pla_perGeV"]), "nOPsCer_Pla_perGeV", "eweight")
         histos['nOPsCer_Sci_perGeV'][part] = rdf.Histo1D(
             ("nOPsCer_Sci_perGeV" + suffix_h, "nOPsCer_Sci_perGeV", 50, 0, values["nOPsCer_Sci_perGeV"]), "nOPsCer_Sci_perGeV", "eweight")
-        histos['nOPsCer_Cer_vs_nOPsCer_Sci'][part] = rdf.Histo2D(
-            ("nOPsCer_Cer_vs_nOPsCer_Sci" + suffix_h, "nOPsCer_Cer_vs_nOPsCer_Sci", 50, 0, values["nOPsCer_Cer"], 50, 0, values["nOPsCer_Sci"]), "nOPsCer_Cer", "nOPsCer_Sci", "eweight")
-        histos['nOPsCer_Cer_vs_eCentruth'][part] = rdf.Histo2D(
-            ("nOPsCer_Cer_vs_eCentruth" + suffix_h, "nOPsCer_Cer_vs_eCentruth", 50, 0, values["nOPsCer_Cer"], 50, 0, values["eCentruth"]), "nOPsCer_Cer", "eCentruth", "eweight")
+        histos['nOPsCer_Pla_vs_nOPsCer_Sci'][part] = rdf.Histo2D(
+            ("nOPsCer_Pla_vs_nOPsCer_Sci" + suffix_h, "nOPsCer_Pla_vs_nOPsCer_Sci", 50, 0, values["nOPsCer_Pla"], 50, 0, values["nOPsCer_Sci"]), "nOPsCer_Pla", "nOPsCer_Sci", "eweight")
+        histos['nOPsCer_Pla_vs_ePlatruth'][part] = rdf.Histo2D(
+            ("nOPsCer_Pla_vs_ePlatruth" + suffix_h, "nOPsCer_Pla_vs_ePlatruth", 50, 0, values["nOPsCer_Pla"], 50, 0, values["ePlatruth"]), "nOPsCer_Pla", "ePlatruth", "eweight")
         histos['nOPsCer_Sci_vs_eScintruth'][part] = rdf.Histo2D(
             ("nOPsCer_Sci_vs_eScintruth" + suffix_h, "nOPsCer_Sci_vs_eScintruth", 50, 0, values["nOPsCer_Sci"], 50, 0, values['eScintruth']), "nOPsCer_Sci", "eScintruth", "eweight")
-        histos['nOPsCer_Cer_vs_eCentrSummed'][part] = rdf.Histo2D(
-            ("nOPsCer_Cer_vs_eCentrSummed" + suffix_h, "nOPsCer_Cer_vs_eCentrSummed", 50, 0, values["nOPsCer_Cer"], 50, 0, values["eCentruth"]), "nOPsCer_Cer", "eCentrSummed", "eweight")
+        histos['nOPsCer_Pla_vs_eCentrSummed'][part] = rdf.Histo2D(
+            ("nOPsCer_Pla_vs_eCentrSummed" + suffix_h, "nOPsCer_Pla_vs_eCentrSummed", 50, 0, values["nOPsCer_Pla"], 50, 0, values["ePlatruth"]), "nOPsCer_Pla", "eCentrSummed", "eweight")
         histos['nOPsCer_Sci_vs_eScinSummed'][part] = rdf.Histo2D(
             ("nOPsCer_Sci_vs_eScinSummed" + suffix_h, "nOPsCer_Sci_vs_eScinSummed", 50, 0, values["nOPsCer_Sci"], 50, 0, values["eScintruth"]), "nOPsCer_Sci", "eScinSummed", "eweight")
         histos['eScinSummed_vs_eScintruth'][part] = rdf.Histo2D(
-            ("eScinSummed_vs_eScintruth" + suffix_h, "eScinSummed_vs_eScintruth", 50, 0, values["eCentruth"], 50, 0, values["eScintruth"]), "eScinSummed", "eScintruth", "eweight")
-        histos['nOPsCer_Cer_vs_eScintruth'][part] = rdf.Histo2D(
-            ("nOPsCer_Cer_vs_eScintruth" + suffix_h, "nOPsCer_Cer_vs_eScintruth", 50, 0, values["nOPsCer_Cer"], 50, 0, values["eScintruth"]), "nOPsCer_Cer", "eScintruth", "eweight")
+            ("eScinSummed_vs_eScintruth" + suffix_h, "eScinSummed_vs_eScintruth", 50, 0, values["ePlatruth"], 50, 0, values["eScintruth"]), "eScinSummed", "eScintruth", "eweight")
+        histos['nOPsCer_Pla_vs_eScintruth'][part] = rdf.Histo2D(
+            ("nOPsCer_Pla_vs_eScintruth" + suffix_h, "nOPsCer_Pla_vs_eScintruth", 50, 0, values["nOPsCer_Pla"], 50, 0, values["eScintruth"]), "nOPsCer_Pla", "eScintruth", "eweight")
 
 
         histos['truthhit_x_vs_truthhit_y'][part] = rdf.Histo2D(
@@ -212,8 +212,8 @@ def makePlots(elefile, pionfile, suffix=""):
     )), 80., 110, "Total 'Visible' Energy [GeV]", 1e-3, 1e2, "Fraction of events", "eTotalGeant_" + suffix, **args)
     DrawHistos(list(histos['eRodtruth'].values()), list(histos['eRodtruth'].keys(
     )), 50, 102, "Rod Energy [GeV]", 1e-3, 1e2, "Fraction of events", "eRodtruth_" + suffix, **args)
-    DrawHistos(list(histos['eCentruth'].values()), list(histos['eCentruth'].keys(
-    )), 0, values["eCentruth"], "CFiber Energy [GeV]", 1e-3, 1e2, "Fraction of events", "eCentruth_" + suffix, **args)
+    DrawHistos(list(histos['ePlatruth'].values()), list(histos['ePlatruth'].keys(
+    )), 0, values["ePlatruth"], "CFiber Energy [GeV]", 1e-3, 1e2, "Fraction of events", "ePlatruth_" + suffix, **args)
     DrawHistos(list(histos['eScintruth'].values()), list(histos['eScintruth'].keys(
     )), 0, values['eScintruth'], "SFiber Energy [GeV]", 1e-3, 1e2, "Fraction of events", "eScintruth_" + suffix, **args)
 
@@ -233,12 +233,12 @@ def makePlots(elefile, pionfile, suffix=""):
     DrawHistos(list(histos['time_zoomed'].values()), list(histos['time_zoomed'].keys(
     )), 0, 10, "Time [ns]", 1e-3, 1e2, "Deposited Energy [GeV]", "time_zoomed_" + suffix, **args)
 
-    DrawHistos(list(histos['nOPsCer_Cer'].values()), list(histos['nOPsCer_Cer'].keys(
-    )), 0, values["nOPsCer_Cer"], "Number of OPs in Cerenkov", 1e-3, 1e2, "Fraction of events", "nOPsCer_Cer_" + suffix, **args)
+    DrawHistos(list(histos['nOPsCer_Pla'].values()), list(histos['nOPsCer_Pla'].keys(
+    )), 0, values["nOPsCer_Pla"], "Number of OPs in Cerenkov", 1e-3, 1e2, "Fraction of events", "nOPsCer_Pla_" + suffix, **args)
     DrawHistos(list(histos['nOPsCer_Sci'].values()), list(histos['nOPsCer_Sci'].keys(
     )), 0, values["nOPsCer_Sci"], "Number of OPs in Scintillator", 1e-3, 1e2, "Fraction of events", "nOPsCer_Sci_" + suffix, **args)
-    DrawHistos(list(histos['nOPsCer_Cer_perGeV'].values()), list(histos['nOPsCer_Cer_perGeV'].keys(
-    )), 0, values["nOPsCer_Cer_perGeV"], "Number of OPs in Cerenkov per GeV", 1e-3, 1e2, "Fraction of events", "nOPsCer_Cer_perGeV_" + suffix, **args)
+    DrawHistos(list(histos['nOPsCer_Pla_perGeV'].values()), list(histos['nOPsCer_Pla_perGeV'].keys(
+    )), 0, values["nOPsCer_Pla_perGeV"], "Number of OPs in Cerenkov per GeV", 1e-3, 1e2, "Fraction of events", "nOPsCer_Pla_perGeV_" + suffix, **args)
     DrawHistos(list(histos['nOPsCer_Sci_perGeV'].values()), list(histos['nOPsCer_Sci_perGeV'].keys(
     )), 0, values["nOPsCer_Sci_perGeV"], "Number of OPs in Scintillator per GeV", 1e-3, 1e2, "Fraction of events", "nOPsCer_Sci_perGeV_" + suffix, **args)
 
@@ -265,20 +265,20 @@ def makePlots(elefile, pionfile, suffix=""):
         DrawHistos([histos['time_vs_truthhit_r'][part]], [], 0, 20,
                    "Time [ns]", 0, 30, "r [cm]", f"time_vs_truthhit_r_{part}_{suffix}", **args)
 
-        DrawHistos([histos['nOPsCer_Cer_vs_nOPsCer_Sci'][part]], [], 0, values["nOPsCer_Cer"],
-                   "Number of OPs in Cerenkov", 0, values["nOPsCer_Sci"], "Number of OPs in Scintillator", f"nOPsCer_Cer_vs_nOPsCer_Sci_{part}_{suffix}", **args)
-        DrawHistos([histos['nOPsCer_Cer_vs_eCentruth'][part]], [], 0, values["nOPsCer_Cer"],
-                   "Number of OPs in Cerenkov", 0, values["eCentruth"], "CFiber Energy [GeV]", f"nOPsCer_Cer_vs_eCentruth_{part}_{suffix}", **args)  
+        DrawHistos([histos['nOPsCer_Pla_vs_nOPsCer_Sci'][part]], [], 0, values["nOPsCer_Pla"],
+                   "Number of OPs in Cerenkov", 0, values["nOPsCer_Sci"], "Number of OPs in Scintillator", f"nOPsCer_Pla_vs_nOPsCer_Sci_{part}_{suffix}", **args)
+        DrawHistos([histos['nOPsCer_Pla_vs_ePlatruth'][part]], [], 0, values["nOPsCer_Pla"],
+                   "Number of OPs in Cerenkov", 0, values["ePlatruth"], "CFiber Energy [GeV]", f"nOPsCer_Pla_vs_ePlatruth_{part}_{suffix}", **args)  
         DrawHistos([histos['nOPsCer_Sci_vs_eScintruth'][part]], [], 0, values["nOPsCer_Sci"],
                    "Number of OPs in Scintillator", 0, values["eScintruth"], "SFiber Energy [GeV]", f"nOPsCer_Sci_vs_eScintruth_{part}_{suffix}", **args)
-        DrawHistos([histos['nOPsCer_Cer_vs_eCentrSummed'][part]], [], 0, values["nOPsCer_Cer"],
-                    "Number of OPs in Cerenkov", 0, values["eCentruth"], "CFiber Energy Summed [GeV]", f"nOPsCer_Cer_vs_eCentrSummed_{part}_{suffix}", **args)
+        DrawHistos([histos['nOPsCer_Pla_vs_eCentrSummed'][part]], [], 0, values["nOPsCer_Pla"],
+                    "Number of OPs in Cerenkov", 0, values["ePlatruth"], "CFiber Energy Summed [GeV]", f"nOPsCer_Pla_vs_eCentrSummed_{part}_{suffix}", **args)
         DrawHistos([histos['nOPsCer_Sci_vs_eScinSummed'][part]], [], 0, values["nOPsCer_Sci"],
                     "Number of OPs in Scintillator", 0, values["eScintruth"], "SFiber Energy Summed [GeV]", f"nOPsCer_Sci_vs_eScinSummed_{part}_{suffix}", **args)
         DrawHistos([histos['eScinSummed_vs_eScintruth'][part]], [], 0, values["eScintruth"],
                     "SFiber Energy Summed [GeV]", 0, values["eScintruth"], "SFiber Energy [GeV]", f"eScinSummed_vs_eScintruth_{part}_{suffix}", **args)
-        DrawHistos([histos['nOPsCer_Cer_vs_eScintruth'][part]], [], 0, values["nOPsCer_Cer"],
-                    "Number of OPs in Cerenkov", 0, values["eScintruth"], "SFiber Energy [GeV]", f"nOPsCer_Cer_vs_eScintruth_{part}_{suffix}", **args)
+        DrawHistos([histos['nOPsCer_Pla_vs_eScintruth'][part]], [], 0, values["nOPsCer_Pla"],
+                    "Number of OPs in Cerenkov", 0, values["eScintruth"], "SFiber Energy [GeV]", f"nOPsCer_Pla_vs_eScintruth_{part}_{suffix}", **args)
 
         # event displays
         for i in evtlist:

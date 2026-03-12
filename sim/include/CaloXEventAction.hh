@@ -41,6 +41,5 @@ private:
   CaloXTree *hh;
 };
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #endif

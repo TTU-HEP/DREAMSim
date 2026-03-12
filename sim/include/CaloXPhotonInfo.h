@@ -17,10 +17,12 @@ struct CaloXPhotonInfo
     G4int exitFiber = -99;
     G4bool isCerenkov = false;
     G4bool isScintillation = false;
-    G4bool isCoreC = false;
+    G4bool isCoreC = false; // plastic Cherenkov fiber core
     G4bool isCoreS = false;
-    G4bool isCladC = false;
+    G4bool isCoreQ = false; // quartz Cherenkov fiber core
+    G4bool isCladC = false; // plastic Cherenkov fiber cladding
     G4bool isCladS = false;
+    G4bool isCladQ = false; // quartz Cherenkov fiber cladding
 
     // Analytical fast-tracking result (all fibers outside the sample rod)
     // Meridional approximation (pz only — exact only for rays through fiber axis)

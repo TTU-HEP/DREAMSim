@@ -125,7 +125,7 @@ int CaloXID::getZkey()
 // ------------------------------------------------------------------------------------
 int CaloXID::packKey(int type, int area, int ix, int iy, int ixx, int iyy, int ztype, int iz)
 {
-   unsigned int sbits[8] = {2, 2, 5, 5, 3, 3, 2, 8}; // bits for packing (31 bits)
+   unsigned int sbits[8] = {3, 2, 5, 5, 3, 3, 2, 8}; // bits for packing (31 bits, type uses 3 bits for [1..4])
 
    unsigned int k = 0;
    unsigned int n = 0;
@@ -158,7 +158,7 @@ int CaloXID::packKey(int type, int area, int ix, int iy, int ixx, int iyy, int z
 int CaloXID::unpackKey(unsigned int k)
 {
 
-   unsigned int sbits[8] = {2, 2, 5, 5, 3, 3, 2, 8}; // bits for packing (31 bits)
+   unsigned int sbits[8] = {3, 2, 5, 5, 3, 3, 2, 8}; // bits for packing (31 bits, type uses 3 bits for [1..4])
 
    unsigned int n = 0;
    unsigned int mask = (1 << sbits[0]) - 1;

@@ -59,6 +59,5 @@ private:
   // G4MaterialPropertiesTable* fWorldMPT;
 };
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #endif

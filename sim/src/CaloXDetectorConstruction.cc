@@ -30,11 +30,7 @@
 
 #include "CaloXTree.h"
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 G4ThreadLocal G4GlobalMagFieldMessenger *CaloXDetectorConstruction::fMagFieldMessenger = nullptr;
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 CaloXDetectorConstruction::CaloXDetectorConstruction(CaloXTree *histo)
     : G4VUserDetectorConstruction(),
@@ -43,13 +39,9 @@ CaloXDetectorConstruction::CaloXDetectorConstruction(CaloXTree *histo)
 {
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 CaloXDetectorConstruction::~CaloXDetectorConstruction()
 {
 }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4VPhysicalVolume *CaloXDetectorConstruction::Construct()
 {
@@ -59,8 +51,6 @@ G4VPhysicalVolume *CaloXDetectorConstruction::Construct()
     // Define volumes
     return DefineVolumes();
 }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void CaloXDetectorConstruction::DefineMaterials()
 {
@@ -75,7 +65,6 @@ void CaloXDetectorConstruction::DefineMaterials()
     nistManager->FindOrBuildMaterial("G4_BRASS");
     nistManager->FindOrBuildMaterial("G4_U");
     nistManager->FindOrBuildMaterial("G4_AIR");
-
 
     // (PolyVinylToluene, C_9H_10)
     nistManager->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE");
@@ -97,11 +86,8 @@ void CaloXDetectorConstruction::DefineMaterials()
     new G4Material("Galactic", z = 1., a = 1.01 * g / mole, density = universe_mean_density,
                    kStateGas, 2.73 * kelvin, 3.e-18 * pascal);
 
-    // Print materials
     // std::cout << *(G4Material::GetMaterialTable()) << std::endl;
 }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
 {
@@ -144,9 +130,9 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
 
     // Use the calorimeter's space diagonal as the world half-size so that
     // any rotation (including 90° around Y) is always fully contained.
-    double calorDiag  = std::sqrt(calorSizeX*calorSizeX +
-                                  calorSizeY*calorSizeY +
-                                  calorSizeZ*calorSizeZ);
+    double calorDiag = std::sqrt(calorSizeX * calorSizeX +
+                                 calorSizeY * calorSizeY +
+                                 calorSizeZ * calorSizeZ);
     double worldSizeX = 1.2 * calorDiag;
     double worldSizeY = 1.2 * calorDiag;
     double worldSizeZ = 1.2 * calorDiag;
@@ -285,6 +271,15 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     //
     //  Fibers
     //
+    // Fiber material summary:
+    //   Fiber      Component   Material              Elements   Density (g/cm3)   n       Att. length
+    //   ---------  ---------   --------------------  ---------  ---------------   ------  -----------
+    //   S-fiber    core        Polystyrene           C8H8       1.05              1.622   2.0 m
+    //              clad        PMMA_Clad             C5H8O2     1.19              1.504   5.0 m
+    //   C-Plastic  core        PMMA                  C5H8O2     1.19              1.504   5.0 m
+    //              clad        Fluorinated_Polymer   C2F2       1.43              1.42    10.0 m
+    //   C-Quartz   core        Fused_Silica          SiO2       2.2              1.468   10.0 m
+    //              clad        Hard_Polymer          C2F2       1.43              1.42    10.0 m
 
     ///--- for scintillation fiber core ---
     double density;
@@ -312,9 +307,24 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
         new G4Material("Fluorinated_Polymer", density = 1.43 * g / cm3, ncomponents = 2);
     fluorinatedPolymer->AddElement(C, 2);
     fluorinatedPolymer->AddElement(F, 2);
+
+    ///--- for Cherenkov Quartz fiber core (Fused Silica, SiO2) ---
+    G4Material *fusedSilica =
+        new G4Material("Fused_Silica", density = 2.2 * g / cm3, ncomponents = 2);
+    fusedSilica->AddElement(Si, natoms = 1);
+    fusedSilica->AddElement(O, natoms = 2);
+
+    ///--- for Cherenkov Quartz fiber cladding (Hard Polymer) ---
+    G4Material *hardPolymer =
+        new G4Material("Hard_Polymer", density = 1.43 * g / cm3, ncomponents = 2);
+    hardPolymer->AddElement(C, 2);
+    hardPolymer->AddElement(F, 2);
+
     G4MaterialPropertiesTable *mpPMMA;
     G4MaterialPropertiesTable *mpFS;
     G4MaterialPropertiesTable *mpPS;
+    G4MaterialPropertiesTable *mpFusedSilica;
+    G4MaterialPropertiesTable *mpHardPolymer;
 
     //--- Generate and add material properties table ---
     G4double PhotonEnergy[] = {2.00 * eV, 2.03 * eV, 2.06 * eV, 2.09 * eV, 2.12 * eV,
@@ -333,11 +343,11 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     //--- PMMA ---
     G4double RefractiveIndex_PMMA[nEntries] =
         {
-            1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468,
-            1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468,
-            1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468,
-            1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468,
-            1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468, 1.468};
+            1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504,
+            1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504,
+            1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504,
+            1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504,
+            1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504, 1.504};
     mpPMMA = new G4MaterialPropertiesTable();
     mpPMMA->AddProperty("RINDEX", PhotonEnergy, RefractiveIndex_PMMA, nEntries);
 
@@ -368,35 +378,58 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     // -- Polystyrene --
     G4double RefractiveIndex_Polystyrene[nEntries] =
         {
-            1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59,
-            1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59,
-            1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59,
-            1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59,
-            1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59, 1.59};
+            1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622,
+            1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622,
+            1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622,
+            1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622,
+            1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622, 1.622};
     mpPS = new G4MaterialPropertiesTable();
     mpPS->AddProperty("RINDEX", PhotonEnergy, RefractiveIndex_Polystyrene, nEntries);
     G4double Absorption_Polystyrene[nEntries];
-    std::fill_n(Absorption_Polystyrene, nEntries, 3.0 * m);
+    std::fill_n(Absorption_Polystyrene, nEntries, 2.0 * m);
     mpPS->AddProperty("ABSLENGTH", PhotonEnergy, Absorption_Polystyrene, nEntries);
 
     polystyrene->SetMaterialPropertiesTable(mpPS);
 
-    //---Materials for Cerenkov fiber---
-    G4Material *clad_C_Material = fluorinatedPolymer;
-    G4Material *core_C_Material = pmma;
+    //--- Fused Silica (Cherenkov Quartz fiber core) ---
+    G4double RefractiveIndex_FusedSilica[nEntries];
+    std::fill_n(RefractiveIndex_FusedSilica, nEntries, 1.468);
+    mpFusedSilica = new G4MaterialPropertiesTable();
+    mpFusedSilica->AddProperty("RINDEX", PhotonEnergy, RefractiveIndex_FusedSilica, nEntries);
+    G4double Absorption_FusedSilica[nEntries];
+    std::fill_n(Absorption_FusedSilica, nEntries, 10.0 * m);
+    mpFusedSilica->AddProperty("ABSLENGTH", PhotonEnergy, Absorption_FusedSilica, nEntries);
+    fusedSilica->SetMaterialPropertiesTable(mpFusedSilica);
+
+    //--- Hard Polymer (Cherenkov Quartz fiber cladding) ---
+    G4double RefractiveIndex_HardPolymer[nEntries];
+    std::fill_n(RefractiveIndex_HardPolymer, nEntries, 1.42);
+    mpHardPolymer = new G4MaterialPropertiesTable();
+    mpHardPolymer->AddProperty("RINDEX", PhotonEnergy, RefractiveIndex_HardPolymer, nEntries);
+    G4double Absorption_HardPolymer[nEntries];
+    std::fill_n(Absorption_HardPolymer, nEntries, 10.0 * m);
+    mpHardPolymer->AddProperty("ABSLENGTH", PhotonEnergy, Absorption_HardPolymer, nEntries);
+    hardPolymer->SetMaterialPropertiesTable(mpHardPolymer);
+
+    //---Materials for Cerenkov Plastic fiber---
+    G4Material *clad_Plastic_Material = fluorinatedPolymer;
+    G4Material *core_Plastic_Material = pmma;
+    //---Materials for Cerenkov Quartz fiber (Fused Silica core, Hard Polymer cladding)---
+    G4Material *clad_Quartz_Material = hardPolymer;
+    G4Material *core_Quartz_Material = fusedSilica;
     //---Materials for Scintillation fiber---
     G4Material *clad_S_Material = pmma_clad;
     G4Material *core_S_Material = polystyrene;
 
     // Parameters for fibers
-    double clad_C_rMin = 0.39 * mm; // cladding cherenkov minimum radius
-    double clad_C_rMax = 0.40 * mm; // cladding cherenkov max radius
+    double clad_Plastic_rMin = 0.39 * mm; // cladding cherenkov minimum radius
+    double clad_Plastic_rMax = 0.40 * mm; // cladding cherenkov max radius
     // double clad_C_Dz = fiberLength / 2.0; // cladding cherenkov lenght
     // double clad_C_Sphi = 0.;              // cladding cherenkov min rotation
     // double clad_C_Dphi = 2. * M_PI;       // cladding chrenkov max rotation
 
-    double core_C_rMin = 0. * mm;
-    double core_C_rMax = 0.39 * mm;
+    double core_Plastic_rMin = 0. * mm;
+    double core_Plastic_rMax = 0.39 * mm;
     // double core_C_Dz = clad_C_Dz;
     // double core_C_Sphi = 0.;
     // double core_C_Dphi = 2. * M_PI;
@@ -418,45 +451,41 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     // double thetaofcenter = 0;
 
     // creating fibers solids
-    // G4cout << "r_clad= " << clad_C_rMax << " r_coreC=" << core_C_rMax << " r_coreS=" << core_S_rMax << G4endl;
-    auto fiber = new G4Tubs("Fiber", 0, clad_C_rMax, fiberLength / 2., 0 * deg, 360. * deg); // S is the same
-    auto fiberC = new G4Tubs("fiberC", 0, core_C_rMax, fiberLength / 2., 0 * deg, 360. * deg);
+    // G4cout << "r_clad= " << clad_Plastic_rMax << " r_coreC=" << core_Plastic_rMax << " r_coreS=" << core_S_rMax << G4endl;
+    auto fiber = new G4Tubs("Fiber", 0, clad_Plastic_rMax, fiberLength / 2., 0 * deg, 360. * deg); // S is the same
+    auto fiberC = new G4Tubs("fiberC", 0, core_Plastic_rMax, fiberLength / 2., 0 * deg, 360. * deg);
     auto fiberS = new G4Tubs("fiberS", 0, core_S_rMax, fiberLength / 2., 0 * deg, 360. * deg);
 
-    auto fiberCLog = new G4LogicalVolume(fiber, clad_C_Material, "fiberCladC");
+    auto fiberPlasticLog = new G4LogicalVolume(fiber, clad_Plastic_Material, "fiberCladPlastic");
+    auto fiberQuartzLog = new G4LogicalVolume(fiber, clad_Quartz_Material, "fiberCladQuartz");
     auto fiberSLog = new G4LogicalVolume(fiber, clad_S_Material, "fiberCladS");
 
-    G4LogicalVolume *fiberCoreCLog = new G4LogicalVolume(fiberC, core_C_Material, "fiberCoreC");
+    G4LogicalVolume *fiberCorePlasticLog = new G4LogicalVolume(fiberC, core_Plastic_Material, "fiberCorePlastic");
+    G4LogicalVolume *fiberCoreQuartzLog = new G4LogicalVolume(fiberC, core_Quartz_Material, "fiberCoreQuartz");
     G4LogicalVolume *fiberCoreSLog = new G4LogicalVolume(fiberS, core_S_Material, "fiberCoreS");
 
-    new G4PVPlacement(0, G4ThreeVector(0, 0, 0), fiberCoreCLog, "fiberCoreCherePhys", fiberCLog, false, 0);
+    new G4PVPlacement(0, G4ThreeVector(0, 0, 0), fiberCorePlasticLog, "fiberCoreCherePlasticPhys", fiberPlasticLog, false, 0);
+    new G4PVPlacement(0, G4ThreeVector(0, 0, 0), fiberCoreQuartzLog, "fiberCoreChereQuartzPhys", fiberQuartzLog, false, 0);
     new G4PVPlacement(0, G4ThreeVector(0, 0, 0), fiberCoreSLog, "fiberCoreScintPhys", fiberSLog, false, 0);
 
-    double R = clad_C_rMax * 2.0 + 0.01; // 10 micron gap between cenral and peripheral fibers
+    double R = clad_Plastic_rMax * 2.0 + 0.01; // 10 micron gap between cenral and peripheral fibers
     double cx1 = R * cos(30.0 * deg);
     double cy1 = R * sin(30.0 * deg);
-    new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), fiberCLog, "fiberCladC", holeLV, false, 0, fCheckOverlaps);
-    new G4PVPlacement(0, G4ThreeVector(cx1, cy1, 0.0), fiberCLog, "fiberCladC", holeLV, false, 1, fCheckOverlaps);
-    new G4PVPlacement(0, G4ThreeVector(-cx1, cy1, 0.0), fiberCLog, "fiberCladC", holeLV, false, 2, fCheckOverlaps);
-    new G4PVPlacement(0, G4ThreeVector(0., -R, 0.), fiberCLog, "fiberCladC", holeLV, false, 3, fCheckOverlaps);
+    new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 0, fCheckOverlaps);
+    new G4PVPlacement(0, G4ThreeVector(cx1, cy1, 0.0), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 1, fCheckOverlaps);
+    // new G4PVPlacement(0, G4ThreeVector(-cx1, cy1, 0.0), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 2, fCheckOverlaps);
+    // new G4PVPlacement(0, G4ThreeVector(0., -R, 0.), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 3, fCheckOverlaps);
+    new G4PVPlacement(0, G4ThreeVector(-cx1, -cy1, 0.), fiberQuartzLog, "fiberCladQuartz", holeLV, false, 2, fCheckOverlaps);
+    new G4PVPlacement(0, G4ThreeVector(0., -R, 0.), fiberQuartzLog, "fiberCladQuartz", holeLV, false, 3, fCheckOverlaps);
 
     new G4PVPlacement(0, G4ThreeVector(cx1, -cy1, 0.), fiberSLog, "fiberCladS", holeLV, false, 1, fCheckOverlaps);
     new G4PVPlacement(0, G4ThreeVector(0.0, R, 0.), fiberSLog, "fiberCladS", holeLV, false, 2, fCheckOverlaps);
     new G4PVPlacement(0, G4ThreeVector(-cx1, -cy1, 0.), fiberSLog, "fiberCladS", holeLV, false, 3, fCheckOverlaps);
 
     /*if(sd){
-     fiberCoreCLog->SetSensitiveDetector(sd);
+     fiberCorePlasticLog->SetSensitiveDetector(sd);
      fiberCoreSLog->SetSensitiveDetector(sd);
      }*/
-
-    //
-    // print parameters
-    //
-    std::cout << "'' " << std::endl;
-    std::cout << "------------------------------------------------------------" << std::endl;
-    std::cout << "---> The calorimeter is " << noLayers << " layers of: [ " << std::endl;
-    std::cout << layerThickness / mm << "mm of (layer) " << calorMaterial->GetName() << std::endl;
-    std::cout << "------------------------------------------------------------" << std::endl;
 
     //
     // Visualization attributes
@@ -469,8 +498,10 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     rodLV->SetVisAttributes(new G4VisAttributes(FALSE, G4Colour(0.0, 0.0, 0.0, 0.6)));   // blue
     // holeLV->SetVisAttributes(new G4VisAttributes(FALSE,G4Colour(1.0,1.0,1.0))); // black
     holeLV->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(1.0, 1.0, 1.0, 0.5))); // white
-    fiberCLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.8, 0.5, 0.8, 0.9)));
-    fiberCoreCLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.98, 0.5, 0.98, 0.9)));
+    fiberPlasticLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.8, 0.5, 0.8, 0.9)));
+    fiberCorePlasticLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.98, 0.5, 0.98, 0.9)));
+    fiberQuartzLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.5, 0.8, 0.5, 0.9)));
+    fiberCoreQuartzLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.5, 0.98, 0.5, 0.9)));
     fiberSLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.0, 0.5, 0.8, 0.9)));       // red
     fiberCoreSLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.0, 0.98, 0.98, 0.9))); // red
 
@@ -480,8 +511,6 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     return worldPV;
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
-
 void CaloXDetectorConstruction::ConstructSDandField()
 {
     // Create global magnetic field messenger.
@@ -489,10 +518,8 @@ void CaloXDetectorConstruction::ConstructSDandField()
     // the field value is not zero.
     G4ThreeVector fieldValue;
     fMagFieldMessenger = new G4GlobalMagFieldMessenger(fieldValue);
-    fMagFieldMessenger->SetVerboseLevel(1);
+    fMagFieldMessenger->SetVerboseLevel(0);
 
     // Register the field messenger for deleting
     G4AutoDelete::Register(fMagFieldMessenger);
 }
-
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

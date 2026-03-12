@@ -73,6 +73,5 @@ private:
   int py8eventNumber;
 };
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #endif

@@ -25,20 +25,17 @@
 #include "CaloXHit.h"
 #include "CaloXTree.h"
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 CaloXEventAction::CaloXEventAction(CaloXDetectorConstruction *det, CaloXPrimaryGeneratorAction *prim, CaloXTree *histo)
     : G4UserEventAction(), fDetector(det), primary(prim), hh(histo)
 {
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 CaloXEventAction::~CaloXEventAction()
 {
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void CaloXEventAction::BeginOfEventAction(const G4Event *event /*event*/)
 {
@@ -47,7 +44,6 @@ void CaloXEventAction::BeginOfEventAction(const G4Event *event /*event*/)
    hh->BeginEvent();
 }
 
-//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void CaloXEventAction::EndOfEventAction(const G4Event *event)
 {

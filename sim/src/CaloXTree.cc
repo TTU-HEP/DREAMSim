@@ -10,16 +10,7 @@
 #include <sstream>  // for string stream
 #include <vector>
 
-#include "TCanvas.h"
-#include "TDirectory.h"
-#include "TEllipse.h"
 #include "TFile.h"
-#include "TGraph.h"
-#include "TH1D.h"
-#include "TH2D.h"
-#include "TPad.h"
-#include "TPaveText.h"
-#include "TText.h"
 #include "TTree.h"
 #include <numeric>
 
@@ -102,89 +93,6 @@ CaloXTree::CaloXTree(string macFileName, int argc, char **argv)
   if (getParamS("createNtuple").compare(0, 4, "true") == 0)
     createNtuple = true;
 
-  // =====================================
-  // histo1D["cerWL"]=new TH1D("cerWL","Cerenkov Wave Length
-  // (nm)",100,0.,1000.); histo1D["cerWLelec"]=new TH1D("cerWLelec","Cerenkov
-  // Wave Length (had)  (nm)",100,0.,1000.);
-
-  double nx = 200;
-  double xmin = 0.0;
-  double xmax = 200.0;
-  histo1D["edepRSC"] = new TH1D("edepRSC", "edep (rod+s+c)", nx, xmin, xmax);
-  histo1D["edepR"] = new TH1D("edepR", "edep all(Rod)", nx, xmin, xmax);
-  histo1D["edepS"] = new TH1D("edepS", "edep all(Sci)", nx, xmin, xmax);
-  histo1D["edepC"] = new TH1D("edepC", "edep all(Cer)", nx, xmin, xmax);
-
-  histo1D["edepS54"] =
-      new TH1D("edepS54", "edep (54x54) (Sci)", nx, xmin, xmax);
-  histo1D["edepS54wt1"] =
-      new TH1D("edepS54wt1", "edep (54x54) wt=1 (Sci)", nx, xmin, xmax);
-
-  histo1D["edepC54"] =
-      new TH1D("edepC54", "edep (54x54) (Cher)", nx, xmin, xmax);
-  histo1D["edepC54wt1"] =
-      new TH1D("edepC54wt1", "edep (54x54) wt=1 (Cher)", nx, xmin, xmax);
-
-  histo1D["edepRSC54"] =
-      new TH1D("edepRSC54", "edep 54x54 (rod+s+c)", nx, xmin, xmax);
-
-  nx = 200;
-  xmin = 0.0;
-  xmax = 200.0; //  z-slice max
-  histo1D["edepRSCz"] = new TH1D(
-      "edepRSCz", "(rod+s+c) edep vs zslice(2cm/slice)", nx, xmin, xmax);
-  histo1D["edepCz"] = new TH1D(
-      "edepCz", "(c-only) edep vs zslics (2cm/slice)  ", nx, xmin, xmax);
-
-  nx = 200;
-  xmin = 0.0;
-  xmax = 200.0; // 20000.0 for in photon counts
-  histo1D["ncerCsumZ"] =
-      new TH1D("ncerCsumZ", "ncer summed over Z-slices (c)", nx, xmin, xmax);
-  histo1D["ncerCsumT"] =
-      new TH1D("ncerCsumT", "ncer summed over T-slicesT (c)", nx, xmin, xmax);
-  histo1D["ncerCsumT54"] = new TH1D(
-      "ncerCsumT54", "ncer (54x54) summed over T-slicesT (c)", nx, xmin, xmax);
-  histo1D["ncerCsumT54wt1"] =
-      new TH1D("ncerCsumT54wt1", "ncer (54x54) (wt1) summed over T-slicesT (c)",
-               nx, xmin, xmax * 100.0);
-
-  nx = 250;
-  xmin = 0.0;
-  xmax = 250.0; //  z-slice max and t-slice max
-  histo1D["ncerCz"] = new TH1D("ncerCz", "ncer vs zs (c)", nx, xmin, xmax);
-  histo1D["ncerCt"] = new TH1D("ncerCt", "ncer vs ts(c)", nx, xmin, xmax);
-  histo2D["ncerCzvsCt"] =
-      new TH2D("ncerCzvsCt", "no of c-photons:  z-slice vs t-slice", 50, 0.0,
-               100.0, 50, 0.0, 250.);
-
-  nx = 30;
-  xmin = 0.0;
-  xmax = 30.0; //  iy=layer number,  ix=rod number
-  histo1D["ncerIX"] = new TH1D("ncerIX", "no of c-photons: IX", 30, 0.0, 30.0);
-  histo1D["ncerIY"] = new TH1D("ncerIY", "no of c-photons: IY", 20, 0.0, 20.0);
-  histo2D["ncerIXvsIY"] =
-      new TH2D("ncerIXvsIY", "no of c-photons: x-slice vs y-slice", 30, 0.0,
-               30.0, 20, 0.0, 20.0);
-  histo2D["ncerIXvsIYactive"] = new TH2D(
-      "ncerIXvsIYactive", "no of c-photons: x-slice vs y-slice (active)", 30,
-      0.0, 30.0, 20, 0.0, 20.0);
-
-  histo1D["stepCedepZ"] =
-      new TH1D("stepCedepZ", "stepCedepZ (cm)", 200, -250., 250.);
-  histo1D["stepCedepT"] =
-      new TH1D("stepCedepT", "stepCedepT (ns)", 200, 0.0, 100.0);
-  histo1D["stepCncerZ"] =
-      new TH1D("stepCncerZ", "stepCedepZ (cm)", 200, -250., 250.);
-  histo1D["stepCncerT"] =
-      new TH1D("stepCncerT", "stepCedepT (ns)", 200, 0.0, 100.0);
-
-  histo1D["cerWL"] = new TH1D("cerWL", "wave length (nm)", 200, 0.0, 1000.0);
-  histo1D["cerWLcaptured"] =
-      new TH1D("cerWLcaptured", "wave length captured (nm)", 200, 0.0, 1000.0);
-  histo1D["cerWLcapturedELEC"] = new TH1D(
-      "cerWLcapturedELEC", "wave length capturedElec", 200, 0.0, 1000.0);
-  // ==========================
   tree = new TTree("tree", "CaloX Tree");
 
   // set event counter.
@@ -241,7 +149,8 @@ CaloXTree::CaloXTree(string macFileName, int argc, char **argv)
   tree->Branch("eLeaktruth_gt_z", &m_eLeaktruth_gt_z);
   tree->Branch("eInvisible", &m_eInvisible);
   tree->Branch("eRodtruth", &m_eRodtruth);
-  tree->Branch("eCentruth", &m_eCentruth);
+  tree->Branch("ePlatruth", &m_ePlatruth);
+  tree->Branch("eQuatruth", &m_eQuatruth);
   tree->Branch("eScintruth", &m_eScintruth);
 
   tree->Branch("nhits3dSS", &m_nhits3dSS);
@@ -270,6 +179,19 @@ CaloXTree::CaloXTree(string macFileName, int argc, char **argv)
   tree->Branch("ph3dCC", &m_ph3dCC);
   tree->Branch("sum3dCC", &m_sum3dCC);
 
+  tree->Branch("nhits3dQQ", &m_nhits3dQQ);
+  tree->Branch("id3dQQ", &m_id3dQQ);
+  tree->Branch("type3dQQ", &m_type3dQQ);
+  tree->Branch("area3dQQ", &m_area3dQQ);
+  tree->Branch("ix3dQQ", &m_ix3dQQ);
+  tree->Branch("iy3dQQ", &m_iy3dQQ);
+  tree->Branch("ixx3dQQ", &m_ixx3dQQ);
+  tree->Branch("iyy3dQQ", &m_iyy3dQQ);
+  tree->Branch("zslice3dQQ", &m_zslice3dQQ);
+  tree->Branch("tslice3dQQ", &m_tslice3dQQ);
+  tree->Branch("ph3dQQ", &m_ph3dQQ);
+  tree->Branch("sum3dQQ", &m_sum3dQQ);
+
   tree->Branch("nOPs", &mP_nOPs);
   tree->Branch("OP_trackid", &mP_trackid);
   tree->Branch("OP_pos_produced_x", &mP_pos_produced_x);
@@ -294,14 +216,17 @@ CaloXTree::CaloXTree(string macFileName, int argc, char **argv)
   tree->Branch("OP_finalFiber", &mP_finalFiber);
   tree->Branch("OP_isCoreC", &mP_isCoreC);
   tree->Branch("OP_isCoreS", &mP_isCoreS);
+  tree->Branch("OP_isCoreQ", &mP_isCoreQ);
   tree->Branch("OP_isCladC", &mP_isCladC);
   tree->Branch("OP_isCladS", &mP_isCladS);
+  tree->Branch("OP_isCladQ", &mP_isCladQ);
   tree->Branch("OP_pol_x", &mP_pol_x);
   tree->Branch("OP_pol_y", &mP_pol_y);
   tree->Branch("OP_pol_z", &mP_pol_z);
 
-  tree->Branch("nOPsCer", &mP_nOPsCer);
-  tree->Branch("nOPsCer_Cer", &mP_nOPsCer_Cer);
+  tree->Branch("nOPsCer",     &mP_nOPsCer);
+  tree->Branch("nOPsCer_Pla", &mP_nOPsCer_Pla);
+  tree->Branch("nOPsCer_Qua", &mP_nOPsCer_Qua);
   tree->Branch("nOPsCer_Sci", &mP_nOPsCer_Sci);
 
   // Meridional (pz-only) analytical result
@@ -397,6 +322,36 @@ void CaloXTree::EndEvent()
     }
     m_nhits3dCC = m_ph3dCC.size();
 
+    //  QQ: Quartz Cherenkov hits (ncer)
+    m_sum3dQQ = 0.0;
+    for (auto itr = qtHits.begin(); itr != qtHits.end(); itr++)
+    {
+      CaloXID id(itr->first);
+      int area = id.area();
+      if (area < 2)
+        continue;
+      double ncer = itr->second;
+      if (round(ncer) < 1.0)
+        continue;
+      m_sum3dQQ = m_sum3dQQ + ncer;
+      int ky = id.iy() * 10;
+      if (area == 3)
+      {
+        ky = ky + id.iyy() + 1;
+      }
+      m_id3dQQ.push_back(id.ix() * 10000000 + ky * 1000 + id.tslice());
+      m_type3dQQ.push_back(id.type());
+      m_area3dQQ.push_back(id.area());
+      m_ix3dQQ.push_back(id.ix());
+      m_iy3dQQ.push_back(id.iy());
+      m_ixx3dQQ.push_back(id.ixx());
+      m_iyy3dQQ.push_back(id.iyy());
+      m_zslice3dQQ.push_back(id.zslice());
+      m_tslice3dQQ.push_back(id.tslice());
+      m_ph3dQQ.push_back(round(ncer));
+    }
+    m_nhits3dQQ = m_ph3dQQ.size();
+
     //  SS: Scintillation hits (edepbirk)...
     m_sum3dSS = 0.0;
     for (auto itr = stHits.begin(); itr != stHits.end(); itr++)
@@ -457,8 +412,10 @@ void CaloXTree::EndEvent()
       mP_finalFiber.push_back(photon.exitFiber);
       mP_isCoreC.push_back(photon.isCoreC);
       mP_isCoreS.push_back(photon.isCoreS);
+      mP_isCoreQ.push_back(photon.isCoreQ);
       mP_isCladC.push_back(photon.isCladC);
       mP_isCladS.push_back(photon.isCladS);
+      mP_isCladQ.push_back(photon.isCladQ);
       mP_pol_x.push_back(photon.polarization.x());
       mP_pol_y.push_back(photon.polarization.y());
       mP_pol_z.push_back(photon.polarization.z());
@@ -478,11 +435,8 @@ void CaloXTree::EndEvent()
     //
     tree->Fill();
     std::cout << "Look into energy deposition in the calorimeter..." << std::endl;
-    std::cout << "  eCalo=" << m_eCalotruth << "  eWorld=" << m_eWorldtruth << "  eLeak=" << m_eLeaktruth << "  eInvisible=" << m_eInvisible << "  eRod=" << m_eRodtruth << "  eCen=" << m_eCentruth << "  eScin=" << m_eScintruth << " eCalo+eWorld+eLeak+eInvisible=" << (m_eCalotruth + m_eWorldtruth + m_eLeaktruth + m_eInvisible) << std::endl;
+    std::cout << "  eCalo=" << m_eCalotruth << "  eWorld=" << m_eWorldtruth << "  eLeak=" << m_eLeaktruth << "  eInvisible=" << m_eInvisible << "  eRod=" << m_eRodtruth << "  ePla(Plastic)=" << m_ePlatruth << "  eQua(Quartz)=" << m_eQuatruth << "  eScin=" << m_eScintruth << " eCalo+eWorld+eLeak+eInvisible=" << (m_eCalotruth + m_eWorldtruth + m_eLeaktruth + m_eInvisible) << std::endl;
   } //  end of if((eventCounts-1)<getParamI("eventsInNtuple"))
-
-  //   analyze this event.
-  analyze();
 }
 
 // ########################################################################
@@ -514,12 +468,15 @@ void CaloXTree::clearCaloXTree()
   rtHits.clear();
   stHits.clear();
   ctHits.clear();
+  qtHits.clear();
   rzHits.clear();
   szHits.clear();
   czHits.clear();
+  qzHits.clear();
   rzEdep.clear();
   szEdep.clear();
   czEdep.clear();
+  qzEdep.clear();
   // mEventNumber.clear();
   // mNxCell=0;
   // mNyCell=0;
@@ -564,7 +521,8 @@ void CaloXTree::clearCaloXTree()
   m_eLeaktruth_gt_z = 0.0;
   m_eInvisible = 0.0;
   m_eRodtruth = 0.0;
-  m_eCentruth = 0.0;
+  m_ePlatruth = 0.0;
+  m_eQuatruth = 0.0;
   m_eScintruth = 0.0;
 
   m_nhits3dSS = 0;
@@ -594,6 +552,19 @@ void CaloXTree::clearCaloXTree()
   m_ph3dCC.clear();
   m_sum3dCC = 0.0;
 
+  m_nhits3dQQ = 0;
+  m_id3dQQ.clear();
+  m_type3dQQ.clear();
+  m_area3dQQ.clear();
+  m_ix3dQQ.clear();
+  m_iy3dQQ.clear();
+  m_ixx3dQQ.clear();
+  m_iyy3dQQ.clear();
+  m_zslice3dQQ.clear();
+  m_tslice3dQQ.clear();
+  m_ph3dQQ.clear();
+  m_sum3dQQ = 0.0;
+
   // clean photons
   photonData.clear();
   mP_nOPs = 0;
@@ -620,8 +591,10 @@ void CaloXTree::clearCaloXTree()
   mP_finalFiber.clear();
   mP_isCoreC.clear();
   mP_isCoreS.clear();
+  mP_isCoreQ.clear();
   mP_isCladC.clear();
   mP_isCladS.clear();
+  mP_isCladQ.clear();
   mP_pol_x.clear();
   mP_pol_y.clear();
   mP_pol_z.clear();
@@ -635,7 +608,8 @@ void CaloXTree::clearCaloXTree()
   mP_analyticalArrivalTime_s.clear();
 
   mP_nOPsCer = 0;
-  mP_nOPsCer_Cer = 0;
+  mP_nOPsCer_Pla = 0;
+  mP_nOPsCer_Qua = 0;
   mP_nOPsCer_Sci = 0;
 }
 
@@ -692,22 +666,24 @@ void CaloXTree::accumulateHits(CaloXHit ah)
     szEdep[z] = szEdep[z] + ah.edep;
   }
 
-  //   C-Fibers
+  //   Plastic C-Fibers
   if (id.type() == 3)
   {
     int t = id.getTkey();
-    // t=3;
     ctHits[t] = ctHits[t] + ah.ncercap;
     int z = id.getZkey();
-    // cout<<"skdebug-  caloTrr accum  z="<<z<<"    iz "<<z/100000<<endl;;
-    //  z=13;
     czHits[z] = czHits[z] + ah.ncercap;
     czEdep[z] = czEdep[z] + ah.edep;
+  }
 
-    // histo1D["stepCedepZ"]->Fill(ah.z/10.0,ah.edep);
-    // histo1D["stepCedepT"]->Fill(ah.globaltime,ah.edep);
-    // histo1D["stepCncerZ"]->Fill(ah.z/10.0,ah.ncer);
-    // histo1D["stepCncerT"]->Fill(ah.globaltime,ah.ncer);
+  //   Quartz C-Fibers
+  if (id.type() == 4)
+  {
+    int t = id.getTkey();
+    qtHits[t] = qtHits[t] + ah.ncercap;
+    int z = id.getZkey();
+    qzHits[z] = qzHits[z] + ah.ncercap;
+    qzEdep[z] = qzEdep[z] + ah.edep;
   }
 
   // mEventNumber.clear();
@@ -735,205 +711,26 @@ void CaloXTree::accumulateEnergy(double edep, int type = 0)
   if (type == 2)
     m_eScintruth += edep;
   if (type == 3)
-    m_eCentruth += edep;
+    m_ePlatruth += edep;
+  if (type == 4)
+    m_eQuatruth += edep;
 }
 
-void CaloXTree::accumulateOPsCer(bool isCoreC, int nOPs)
+void CaloXTree::accumulateOPsCer(int fiberType, int nOPs)
 {
-  if (isCoreC)
-  {
-    mP_nOPsCer_Cer += nOPs; // Cerenkov fibers
-    mP_nOPsCer += nOPs;
-  }
+  // fiberType: 0=scintillation, 1=plastic Cherenkov, 2=quartz Cherenkov
+  mP_nOPsCer += nOPs;
+  if (fiberType == 1)
+    mP_nOPsCer_Pla += nOPs;
+  else if (fiberType == 2)
+    mP_nOPsCer_Qua += nOPs;
   else
-  {
-    mP_nOPsCer_Sci += nOPs; // Scintillation fiber
-    mP_nOPsCer += nOPs;
-  }
+    mP_nOPsCer_Sci += nOPs;
 }
 
 // ########################################################################
 void CaloXTree::analyze()
 {
-  // cout<<"CaloXTree::analyze() is called..."<<endl;
-  double calibSen2 = 100.0 / getParamF("calibSen");
-  double calibSph2 = 100.0 / getParamF("calibSph");
-  double calibCen2 = 100.0 / getParamF("calibCen");
-  double calibCph2 = 100.0 / getParamF("calibCph");
-
-  double edepR = 0.0;   //  edep sum in rod
-  double edepS = 0.0;   //  edeo sum in scintillating fibers
-  double edepC = 0.0;   //  edep sum in cherenkov fiberss
-  double edepR54 = 0.0; //  edep sum in rod
-  double edepS54 = 0.0; //  edeo sum in scintillating fibers
-  double edepC54 = 0.0; //  edep sum in cherenkov fiberss
-
-  vector<double> edepRz(512, 0.0); //  size 256,  initial value 0.0
-  vector<double> edepSz(512, 0.0); //  size 256,  initial value 0.0
-  vector<double> edepCz(512, 0.0); //  size 256,  initial value 0.0
-
-  vector<double> ncerCz(512, 0.0);      //  size 256,  initial value 0.0
-  vector<double> ncerCt(512, 0.0);      //  size 256,  initial value 0.0
-  vector<double> ncerCtTower(512, 0.0); //  size 256,  initial value 0.0
-
-  int n = 0;
-
-  //   edep in all...
-  int ixitr = 0;
-  for (auto itr = rzEdep.begin(); itr != rzEdep.end(); itr++)
-  {
-    ixitr++;
-    CaloXID id(itr->first);
-    // id.print();
-    int zs = id.zslice();
-    double edep = itr->second;
-    edepR = edepR + edep;
-    edepRz[zs] = edepRz[zs] + edep;
-    if (id.area() > 1)
-    {
-      edepR54 = edepR54 + edep;
-    }
-  }
-
-  for (auto itr = szEdep.begin(); itr != szEdep.end(); itr++)
-  {
-    CaloXID id(itr->first);
-    // id.print();
-    int zs = id.zslice();
-    double edep = itr->second;
-    edepS = edepS + edep;
-    edepSz[zs] = edepSz[zs] + edep;
-    if (id.area() > 1)
-    {
-      edepS54 = edepS54 + edep;
-    }
-  } // end of rzEdep.
-
-  for (auto itr = czEdep.begin(); itr != czEdep.end(); itr++)
-  {
-    CaloXID id(itr->first);
-    // id.print();
-    int zs = id.zslice();
-    double edep = itr->second;
-    edepC = edepC + edep;
-    edepCz[zs] = edepCz[zs] + edep;
-    if (id.area() > 1)
-    {
-      edepC54 = edepC54 + edep;
-    }
-  } // end of rzEdep.
-
-  double edepRSC = (edepR + edepS + edepC);
-  double edepRSC54 = (edepR54 + edepS54 + edepC54);
-  histo1D["edepRSC"]->Fill(edepRSC);
-  histo1D["edepR"]->Fill(edepR);
-  histo1D["edepS"]->Fill(edepS * calibSen2);
-  histo1D["edepC"]->Fill(edepC * calibCen2);
-  histo1D["edepRSC54"]->Fill(edepRSC54);
-
-  histo1D["edepS54"]->Fill(edepS54 * calibSen2);
-  histo1D["edepS54wt1"]->Fill(edepS54);
-
-  histo1D["edepC54"]->Fill(edepC54 * calibCen2);
-  histo1D["edepC54wt1"]->Fill(edepC54);
-
-  for (int i = 0; i < int(edepRz.size()); i++)
-  {
-    double edepSum = edepRz[i] + edepSz[i] + edepCz[i];
-    histo1D["edepRSCz"]->Fill(i, edepSum);
-    histo1D["edepCz"]->Fill(i, edepCz[i]);
-  }
-
-  //
-  //   Cerenkov fibers
-  //
-
-  //
-  //   z slice (Cherenkov)
-  //
-  double ncerCsumZ = 0.0;
-  for (auto itr = czHits.begin(); itr != czHits.end(); itr++)
-  {
-    // std::cout<<" rt-key "<<itr->first<<"  val "<<itr->second<<std::endl;
-    CaloXID id(itr->first);
-    // id.print();
-    int zs = id.zslice();
-    // std::cout<<" Zslize ZHits: "<<zs<<std::endl;
-    double ncer = itr->second;
-    // cout<<"  zs="<<zs<<"   ncer="<<ncer<<endl;
-    ncerCsumZ = ncerCsumZ + ncer;
-    ncerCz[zs] = ncerCz[zs] + ncer;
-  } // end of for-loop  for(auto itr=rtHits.begin(); itr !=rtHits.end(); itr++)
-
-  histo1D["ncerCsumZ"]->Fill(ncerCsumZ * calibCph2);
-
-  for (int i = 0; i < int(ncerCz.size()); i++)
-  {
-    double ncer = ncerCz[i];
-    histo1D["ncerCz"]->Fill(i, ncer);
-  }
-
-  // ======================================================================
-
-  double ncerCsumT = 0.0;
-  double ncerCsumT54 = 0.0;
-  for (auto itr = ctHits.begin(); itr != ctHits.end(); itr++)
-  {
-    // kcount=kcount+1;
-    // std::cout<<" rt-key "<<itr->first<<"  val "<<itr->second<<std::endl;
-    CaloXID id(itr->first);
-    // id.print();
-    int ts = id.tslice();
-    double ncer = itr->second;
-    ncerCsumT = ncerCsumT + ncer;
-    ncerCt[ts] = ncerCt[ts] + ncer;
-    //  indivisual hit...
-    int ix = id.ix();
-    int iy = id.iy();
-    histo1D["ncerIX"]->Fill(ix, ncer);
-    histo1D["ncerIY"]->Fill(iy, ncer);
-    histo2D["ncerIXvsIY"]->Fill(ix, iy, ncer);
-    if (id.area() == 3)
-    {
-      ncerCtTower[ts] = ncerCtTower[ts] + ncer;
-    }
-
-    if (id.area() > 1)
-    {
-      ncerCsumT54 = ncerCsumT54 + ncer;
-      histo2D["ncerIXvsIYactive"]->Fill(ix, iy, ncer);
-    }
-
-  } // end of for-loop  for(auto itr=rtHits.begin(); itr !=rtHits.end(); itr++)
-  // ======================================================================
-
-  histo1D["ncerCsumT"]->Fill(ncerCsumT * calibCph2);
-  histo1D["ncerCsumT54"]->Fill(ncerCsumT54 * calibCph2);
-  histo1D["ncerCsumT54wt1"]->Fill(ncerCsumT54);
-
-  // cout<<"size of hit2d:"<<hit2d.size()<<endl;
-
-  for (int i = 0; i < int(ncerCt.size()); i++)
-  {
-    double ncer = ncerCt[i];
-    histo1D["ncerCt"]->Fill(i, ncer);
-  }
-
-  /*    no csv file creation
-   if(eventCountsALL<=getParamI("csvHits2dSC")) {
-      map<int,double> hits2dSC=make2Dhits(szHits);
-      writeCSV("2dSC",hits2dSC);
-   }
-
-   if(eventCountsALL<=getParamI("csvHits2dCH")) {
-      map<int,double> hits2dCH=make2Dhits(ctHits);
-      writeCSV("2dCH",hits2dCH);
-   }
-
-   if(eventCountsALL<=getParamI("csvHits3dCH")) {
-      writeCSV("3dCH",ctHits);
-   }
-  */
 }
 
 //  =============================================================================

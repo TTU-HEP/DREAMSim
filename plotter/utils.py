@@ -166,7 +166,7 @@ def energy_axis_ranges(beam_energy_gev, detector_half_z_cm):
     #t_max = detector_half_z_cm * 2 / 100.0 * 1.6 * 1.1  # ns
     t_min = 0
     t_max_zoomed = 10.0
-    t_max = 20
+    t_max = 25
 
     book = {
         "eLeak":          (0,         E * 0.30),
@@ -174,21 +174,27 @@ def energy_axis_ranges(beam_energy_gev, detector_half_z_cm):
         "eTotal":         (E * 0.85,  E * 1.10),
         "eTotalGeant":    (E * 0.80,  E * 1.10),
         "eRod":           (E * 0.45,  E * 1.05),
-        "eCentruth":      (0,         E * 0.015),
+        "ePlatruth":      (0,         E * 0.015),
+        "eQuatruth":      (0,         E * 0.015),
         "eScintruth":     (0,         E * 0.010),
-        "nOPsCer_Cer":    (0,         E * 1.4e3),
+        "nOPsCer_Pla":    (0,         E * 1.4e3),
+        "nOPsCer_Qua":    (0,         E * 1.4e3),
         "nOPsCer_Sci":    (0,         E * 1.1e3),
         "z":              (z_lo,      z_hi),
         "time":           (t_min,     t_max),
         "time_zoomed":    (t_min,     t_max_zoomed),
+        "time_meridional":(8.0,       15.0),
     }
-    book["nOPsCer_Cer_perGeV"] = (0, book["nOPsCer_Cer"][1] / max(book["eCentruth"][1], 1e-9))
+    book["nOPsCer_Pla_perGeV"] = (0, book["nOPsCer_Pla"][1] / max(book["ePlatruth"][1], 1e-9))
+    book["nOPsCer_Qua_perGeV"] = (0, book["nOPsCer_Qua"][1] / max(book["eQuatruth"][1], 1e-9))
     book["nOPsCer_Sci_perGeV"] = (0, book["nOPsCer_Sci"][1] / max(book["eScintruth"][1], 1e-9))
 
     # Draw ranges are the same by default; override selectively as needed.
     draw = dict(book)
-    draw["eLeak"]  = (0, E * 0.20)   # tighter for display
-    draw["z"]      = (z_lo, z_hi)
+    draw["eLeak"]          = (0, E * 0.20)   # tighter for display
+    draw["z"]              = (z_lo, z_hi)
+    draw["time_skew"]      = (t_min, 30.0)   # ns — skew mode profile y-axis
+    draw["time_meridional"]= (8.0,   15.0)   # ns — meridional mode profile y-axis
 
     return book, draw
 
@@ -239,3 +245,60 @@ def get_colors(labels):
         _COLOR_CACHE[lbl] = ROOT.TColor.GetColor(r, g, b)
 
     return [COLORS[l] if l in COLORS else _COLOR_CACHE[l] for l in labels]
+
+
+# ---------------------------------------------------------------------------
+# Fiber color / marker palettes
+# ---------------------------------------------------------------------------
+# Colors are paired per particle index: Plastic and Quartz of the same particle
+# share a color family; different particles get distinct families.
+PLA_COLORS  = [ROOT.kRed,    ROOT.kBlue,    ROOT.kGreen+2, ROOT.kOrange+7]
+QUA_COLORS  = [ROOT.kPink+6, ROOT.kAzure+6, ROOT.kTeal+3,  ROOT.kYellow+2]
+PLA_MARKERS = [24, 25, 26, 27, 28, 30, 32]   # open markers for Plastic
+QUA_MARKERS = [20, 21, 22, 23, 29, 33, 34]   # solid markers for Quartz
+
+
+# ---------------------------------------------------------------------------
+# Legend positioning
+# ---------------------------------------------------------------------------
+
+def lpos(key_list, x0=0.50, x1=0.92, y1=0.88):
+    """
+    Return DrawHistos keyword args (legendPos, legendNCols) auto-sized to the
+    number of legend entries.  Two columns are used when entries > 6; each
+    extra column widens the box by 50 % more than the previous one.
+    """
+    n     = max(len(key_list), 1)
+    ncols = 2 if n > 6 else 1
+    rows  = (n + ncols - 1) // ncols
+    extra, w = 0.0, 0.15
+    for _ in range(ncols - 1):
+        extra += w
+        w     *= 1.5
+    _x0 = max(x0 - extra, 0.05)
+    return dict(legendPos=[_x0, y1 - 0.05 * rows, x1, y1], legendNCols=ncols)
+
+
+# ---------------------------------------------------------------------------
+# Fit-parameter text box
+# ---------------------------------------------------------------------------
+
+def make_fit_pave(fit_entries, x0=0.18, x1=0.60, y0_base=0.13, line_h=0.05):
+    """
+    Build a ROOT TPaveText showing pol1 fit results.
+
+    Parameters
+    ----------
+    fit_entries : list of (label, color, p0, p1)
+    """
+    pave = ROOT.TPaveText(x0, y0_base, x1, y0_base + len(fit_entries) * line_h, "NDC")
+    pave.SetFillColor(0)
+    pave.SetFillStyle(1001)
+    pave.SetBorderSize(0)
+    pave.SetTextFont(42)
+    pave.SetTextSize(0.028)
+    pave.SetTextAlign(12)
+    for lbl, col, p0, p1 in fit_entries:
+        txt = pave.AddText(f" {lbl}:  t(z) = {p0:.3f} + {p1:.4f} #times z")
+        txt.SetTextColor(col)
+    return pave

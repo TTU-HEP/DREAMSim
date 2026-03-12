@@ -1,4 +1,4 @@
-### HG-DREAM G4 simulation: dream 2.06
+### HG-DREAM G4 simulation: DREAMSim
 
 #### Environment:
 
@@ -15,7 +15,7 @@ interactive -p nocona
 ```
 From there run the singularity container with the following command:
 ```
-singularity run --cleanenv --bind /lustre:/lustre /lustre/work/yofeng/SimulationEnv/alma9forgeant4_sbox/
+singularity run --cleanenv --bind /lustre:/lustre /lustre/work/yofeng/SimulationEnv/alma9forgeant4_v3.sif
 ```
 The corresponding docker image can be found [here](https://hub.docker.com/repository/docker/yongbinfeng/alma9geant/general), with the build file [here](https://github.com/TTU-HEP/SimulationEnv).
 
@@ -35,7 +35,7 @@ docker run -it --rm -h dreamsim -v /path/to/DREAMSIM:/DREAMSIM yongbinfeng/alma9
 
 Inside the singularity environment, build program in "build" area,
 ```
-cd /path/to/DREAMSIM/directory
+cd /path/to/DREAMSim/directory
 cd sim
 mkdir build
 cd build
@@ -45,31 +45,53 @@ make -j 4
 
 Structure of software:
 
-- `sim/exampleB4b.cc`: main program
-- `sim/src/B4DetectorConstruction.cc`:definition of the detector
-- `sim/src/B4bSteppingAction.cc`:access hits at each step
-- `sim/src/CaloTree.cc`:analysis and hit handling
+- `sim/CaloXSim.cc`: main program
+- `sim/src/CaloXDetectorConstruction.cc`: detector geometry and fiber materials
+- `sim/src/CaloXSteppingAction.cc`: per-step hit and photon processing
+- `sim/src/CaloXEventAction.cc`: per-event data accumulation
+- `sim/src/CaloXTree.cc`: ROOT ntuple output and analysis
+
+#### Fiber types
+
+Three fiber types are simulated:
+
+| Fiber     | Role    | Material            | Elements | Density (g/cm³) | n     | Att. length |
+|-----------|---------|---------------------|----------|-----------------|-------|-------------|
+| S-fiber   | core    | Polystyrene         | C8H8     | 1.05            | 1.622 | 3.0 m       |
+|           | clad    | PMMA_Clad           | C5H8O2   | 1.19            | 1.504 | 5.0 m       |
+| C-Plastic | core    | PMMA                | C5H8O2   | 1.19            | 1.504 | 5.0 m       |
+|           | clad    | Fluorinated_Polymer | C2F2     | 1.43            | 1.42  | 10.0 m      |
+| C-Quartz  | core    | Fused_Silica        | SiO2     | 1.19            | 1.468 | 10.0 m      |
+|           | clad    | Hard_Polymer        | C2F2     | 1.43            | 1.42  | 10.0 m      |
+
+S-fibers measure scintillation light; C-Plastic and C-Quartz fibers measure Cherenkov light with different core materials.
 
 #### Run the code
 
 ```
-./exampleB4b -b paramBatch03_single.mac  \
+./CaloXSim -b paramBatch03_single.mac  \
     -jobName testjob -runNumber 001 -runSeq 003  \
-    -numberOfEvents 10  -eventsInNtupe 100    \
+    -numberOfEvents 10 -eventsInNtuple 100    \
     -gun_particle e+ -gun_energy_min 100.0 -gun_energy_max 100.0 \
     -sipmType 1
 ```
 
-The output files are:
-- root: histograms
-- csv: hits in each readout cell (2D and 3D)
+All run parameters are defined in `paramBatch03_single.mac` and may be overridden on the command line or via `runBatch03_single_param.sh`.
 
-Run parameters: 
-- All run parameters are defined in "paramBatch03_single.mac" and
-may be overloaded in "runBatch03_single_param.sh".
+The output is a ROOT file containing an ntuple (TTree) with per-event hit information for all fiber types.
+
+Verbosity is quiet by default. To enable verbose G4 output, uncomment the relevant lines in `paramBatch03_single.mac`:
+```
+#/process/list
+#/physics_list/list
+#/run/verbose 2
+#/event/verbose 2
+#/tracking/verbose 1
+```
 
 #### Job submission on HPCC
-the script `jobs/jobSubmission.py` handles that. Run
+
+The script `jobs/jobSubmission.py` handles that. Run
 ```
 cd jobs
 python jobSubmission.py
@@ -80,7 +102,7 @@ to submit the jobs, which can then be monitored with `squeue -u $USER`. More inf
 
 #### Analysis
 
-The script `plotter/makePlotsRDF.py` handles this. It runs on multithreads with ROOT's RDataFrame. Therefore, from the login node, log to an interactive node with mutliple cores, e.g.
+The script `plotter/makePlotsRDF.py` handles this. It runs on multithreads with ROOT's RDataFrame. Therefore, from the login node, log to an interactive node with multiple cores, e.g.
 ```
 interactive -p nocona -c 4
 ```
