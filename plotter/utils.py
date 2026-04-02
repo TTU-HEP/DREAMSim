@@ -71,13 +71,14 @@ def ensure_dir(path):
 # Histogram save / reload
 # ---------------------------------------------------------------------------
 
-def save_histos_to_root(histos, outpath):
+def save_histos_to_root(histos, outpath, mode="RECREATE"):
     """
     Write all histograms in a nested dict  {name: {label: TH1/TH2 proxy}}
     to a ROOT file.  Histograms are stored under the key  "name__label".
+    Pass mode="UPDATE" to append to an existing file.
     """
     ensure_dir(os.path.dirname(outpath) or ".")
-    f = ROOT.TFile(outpath, "RECREATE")
+    f = ROOT.TFile(outpath, mode)
     for hname, hdict in histos.items():
         for label, hptr in hdict.items():
             h = hptr.GetValue() if hasattr(hptr, "GetValue") else hptr
@@ -194,7 +195,7 @@ def energy_axis_ranges(beam_energy_gev, detector_half_z_cm):
     draw["eLeak"]          = (0, E * 0.20)   # tighter for display
     draw["z"]              = (z_lo, z_hi)
     draw["time_skew"]      = (t_min, 30.0)   # ns — skew mode profile y-axis
-    draw["time_meridional"]= (8.0,   15.0)   # ns — meridional mode profile y-axis
+    draw["time_meridional"]= (10.0,  18.0)   # ns — meridional mode profile y-axis
 
     return book, draw
 

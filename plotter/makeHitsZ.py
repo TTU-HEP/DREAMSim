@@ -62,6 +62,7 @@ import ROOT
 sys.path.append("./CMSPLOTS")
 from myFunction import DrawHistos
 
+from sipm import make_drs_histos
 from utils import (
     build_rdfs,
     ensure_dir,
@@ -69,7 +70,6 @@ from utils import (
     load_histos_from_root,
     load_calibration,
     energy_axis_ranges,
-    get_colors,
     lpos,
     make_fit_pave,
     PLA_COLORS, QUA_COLORS,
@@ -330,7 +330,7 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None, fit_group=None
     calib   : optional calibration dict (from load_calibration)
     """
     ensure_dir(outdir)
-    colors = get_colors(labels)
+    colors = [PLA_COLORS[i % len(PLA_COLORS)] for i in range(len(labels))]
     z_lo, z_hi = draw["z"]
     t_min, t_max = draw["time"]
     t_range = {"skew": draw["time_skew"], "meridional": draw["time_meridional"]}
@@ -438,6 +438,40 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None, fit_group=None
                *t_range["meridional"], "Analytical Arrival Time (Meridional) [ns]", 1, 1e4, "Counts",
                f"time_meridional_{suffix}", **lpos(_ck),
                **{**args_op, "mycolors": cer_colors("time_meridional_Pla", "time_meridional_Qua")})
+
+    # ── DRSOutput: photon arrival-time histogram ⊗ SiPM response ────────────
+    drs_histos = make_drs_histos(histos, labels, suffix)
+    if drs_histos:
+        args_drs = {**args_op, "donormalize": False, "dology": False}
+        for prefix in ["DRSOutput", "DRSOutput1stPeak"]:
+            for mode, t_drs in [
+                ("skew",       (t_range["skew"][0],       t_range["skew"][1]       + 20.0)),
+                ("meridional", (t_range["meridional"][0], t_range["meridional"][1])),
+            ]:
+                _dv, _dk, _dc, _dm = [], [], [], []
+                for i, l in enumerate(labels):
+                    for fib_key, fib_label, col, mkr in [
+                        ("Pla", "Plastic",
+                         PLA_COLORS[i % len(PLA_COLORS)], PLA_MARKERS[i % len(PLA_MARKERS)]),
+                        ("Qua", "Quartz",
+                         QUA_COLORS[i % len(QUA_COLORS)], QUA_MARKERS[i % len(QUA_MARKERS)]),
+                    ]:
+                        key = f"{prefix}_{mode}_{fib_key}"
+                        if l not in drs_histos.get(key, {}):
+                            continue
+                        _dv.append(drs_histos[key][l])
+                        _dk.append(f"{l} ({fib_label})")
+                        _dc.append(col)
+                        _dm.append(mkr)
+
+                if _dv:
+                    DrawHistos(_dv, _dk,
+                               *t_drs, f"DRS Output Time ({mode}) [ns]",
+                               None, None, "DRS ADC",
+                               f"{prefix}_{mode}_{suffix}",
+                               markerstyles=_dm,
+                               **lpos(_dk),
+                               **{**args_drs, "mycolors": _dc})
 
     # --- 2D plots ---
     args2d = {**args_edep, "dology": False, "drawoptions": "colz",
@@ -623,6 +657,8 @@ def draw_histos(histos, draw, suffix, outdir, labels, calib=None, fit_group=None
                        extraToDraw=[grp_pave],
                        **{**args_prof, "mycolors": grp_cols})
 
+    return drs_histos
+
 
 # ---------------------------------------------------------------------------
 # Top-level entry point
@@ -671,8 +707,11 @@ def run(particle_files, suffix, beam_energy_gev,
         save_histos_to_root(histos, root_cache)
 
     print("\nDrawing plots...")
-    draw_histos(histos, draw, suffix, outdir, labels, calib=calib,
-                fit_group=fit_group or [])
+    drs_histos = draw_histos(histos, draw, suffix, outdir, labels, calib=calib,
+                             fit_group=fit_group or [])
+    if drs_histos:
+        print("\nSaving DRS histograms to ROOT cache...")
+        save_histos_to_root(drs_histos, root_cache, mode="UPDATE")
     print(f"\nDone. Plots in: {outdir}/")
 
 
