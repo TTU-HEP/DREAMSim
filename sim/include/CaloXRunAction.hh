@@ -5,6 +5,7 @@
 #define CaloXRunAction_h 1
 
 #include "G4UserRunAction.hh"
+#include "G4Timer.hh"
 #include "globals.hh"
 
 class CaloXTree;
@@ -19,6 +20,7 @@ public:
 
 private:
   CaloXTree *hh;
+  G4Timer fTimer; // measures real (wall) and CPU time of the run
 };
 
 
