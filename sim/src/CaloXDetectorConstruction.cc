@@ -480,7 +480,14 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
 
     new G4PVPlacement(0, G4ThreeVector(cx1, -cy1, 0.), fiberSLog, "fiberCladS", holeLV, false, 1, fCheckOverlaps);
     new G4PVPlacement(0, G4ThreeVector(0.0, R, 0.), fiberSLog, "fiberCladS", holeLV, false, 2, fCheckOverlaps);
-    new G4PVPlacement(0, G4ThreeVector(-cx1, -cy1, 0.), fiberSLog, "fiberCladS", holeLV, false, 3, fCheckOverlaps);
+    //  The six peripheral slots sit at 30, 90, 150, 210, 270 and 330 degrees.  This
+    //  fiber belongs in the free 150-degree slot (-cx1, +cy1); with (-cx1, -cy1) it
+    //  coincided exactly with quartz copy 2 (same centre, same r_out), so navigation
+    //  always resolved to the quartz fiber placed earlier and this S fiber was
+    //  invisible -- leaving 4 C against 2 effective S fibers per hole instead of 4
+    //  against 3.  fCheckOverlaps does not catch it: G4 samples points on the surface
+    //  of the new solid, which for exactly coincident solids return kSurface.
+    new G4PVPlacement(0, G4ThreeVector(-cx1, cy1, 0.), fiberSLog, "fiberCladS", holeLV, false, 3, fCheckOverlaps);
 
     /*if(sd){
      fiberCorePlasticLog->SetSensitiveDetector(sd);

@@ -17,6 +17,7 @@
 #include "G4PhysicalConstants.hh"
 #include "G4SystemOfUnits.hh"
 #include "G4Positron.hh"
+#include "Randomize.hh"
 
 #include "CaloXID.h"  // including CaloXID, CaloXHit, CaloXTree
 #include "CaloXHit.h" // including CaloXID, CaloXHit, CaloXTree
@@ -234,8 +235,9 @@ void CaloXSteppingAction::UserSteppingAction(const G4Step *step)
   aHit.process = processName;
   if (ncer.size() > 0)
   {
-    aHit.ncer = ncer[0];
-    aHit.ncercap = ncer[3]; // including SiPM pde and capturing efficiency
+    aHit.ncer = ncer[0];      // all Cherenkov photons produced in this step
+    aHit.ncercap = ncer[3];   // sampled photoelectrons (capture cone + SiPM PDE)
+    aHit.ncertrap = ncer[5];  // photons in the capture cone, before the PDE
   }
 
   // aHit.print();
@@ -264,6 +266,7 @@ vector<double> CaloXSteppingAction::UserCerenkov(const G4Step *step)
   double nCERlocalElec = 0;
   double nCERlocalCap = 0;
   double nCERlocalElecCap = 0;
+  double nCERtrapped = 0; //  photons inside the capture cone, before the SiPM PDE
 
   //  Code from examples/extended/optical/OpNovice2/src/SteppingAction.cc
   static G4ParticleDefinition *opticalphoton =
@@ -338,21 +341,34 @@ vector<double> CaloXSteppingAction::UserCerenkov(const G4Step *step)
           capture = 1; // NA=sin(theta)=0.33
 
         nCERtotal = nCERtotal + 1;
+        if (capture == 1)
+        {
+          nCERtrapped = nCERtrapped + 1;
+        }
 
+        //  Detection has to be sampled per photon, not applied as a weight.
+        //  Accumulating the PDE itself yields the *expectation value* of the
+        //  photoelectron count, whose variance is N_trap*<pde^2> ~ N_pe*<pde>
+        //  instead of the correct N_pe: with <pde> ~ 0.3-0.4 that is a factor
+        //  ~1/sqrt(<pde>) too little Cherenkov photostatistics.  Drawing the
+        //  detection here makes the counts fluctuate as Binomial(N_trap, pde).
+        //  The undetected-but-trapped photons are still available downstream
+        //  through nCERtrapped, so a different PDE can be applied offline.
         double pde = getPDE(wavelength);
-        nCERlocal = nCERlocal + pde;
+        int detected = (G4UniformRand() < pde) ? 1 : 0;
+        nCERlocal = nCERlocal + detected;
 
         if (capture == 1)
         {
-          nCERlocalCap = nCERlocalCap + pde;
+          nCERlocalCap = nCERlocalCap + detected;
         }
 
         if (pdgcode == 11)
         {
-          nCERlocalElec = nCERlocalElec + pde;
+          nCERlocalElec = nCERlocalElec + detected;
           if (capture == 1)
           {
-            nCERlocalElecCap = nCERlocalElecCap + pde;
+            nCERlocalElecCap = nCERlocalElecCap + detected;
           }
         }
         // cout<<"cerenkov phton  en="<<en<<endl;
@@ -380,6 +396,7 @@ vector<double> CaloXSteppingAction::UserCerenkov(const G4Step *step)
   NCER.push_back(double(nCERlocalElec));
   NCER.push_back(double(nCERlocalCap));
   NCER.push_back(double(nCERlocalElecCap));
+  NCER.push_back(double(nCERtrapped));
   return NCER;
 }
 

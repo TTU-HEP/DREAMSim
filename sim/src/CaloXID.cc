@@ -125,32 +125,39 @@ int CaloXID::getZkey()
 // ------------------------------------------------------------------------------------
 int CaloXID::packKey(int type, int area, int ix, int iy, int ixx, int iyy, int ztype, int iz)
 {
-   unsigned int sbits[8] = {3, 2, 5, 5, 3, 3, 2, 8}; // bits for packing (31 bits, type uses 3 bits for [1..4])
+   //  iz carries _zslice ([0,500]) or _tslice ([0,511]), so it needs 9 bits.  With
+   //  the 8 bits it used to get, the typical tslice here (t = z/c + (2000-z)/190
+   //  ~ 7-15 ns -> 130-300 slices) aliased slices above 255 back onto low slices
+   //  and pushed the carry into bit 31 of a signed int, corrupting cell identity.
+   //  The two spare bits come from ixx, which is always 0 (_nxx = 1).
+   unsigned int sbits[8] = {3, 2, 5, 5, 1, 3, 2, 9}; // bits for packing (30 bits, type uses 3 bits for [1..4])
 
+   //  Mask every field to its own width so that an out-of-range value truncates
+   //  inside its field instead of corrupting the neighbouring ones.
    unsigned int k = 0;
    unsigned int n = 0;
-   k |= type << n;
+   k |= (type & ((1u << sbits[0]) - 1)) << n;
 
    n = n + sbits[0];
-   k |= area << n;
+   k |= (area & ((1u << sbits[1]) - 1)) << n;
 
    n = n + sbits[1];
-   k |= ix << n;
+   k |= (ix & ((1u << sbits[2]) - 1)) << n;
 
    n = n + sbits[2];
-   k |= iy << n;
+   k |= (iy & ((1u << sbits[3]) - 1)) << n;
 
    n = n + sbits[3];
-   k |= ixx << n;
+   k |= (ixx & ((1u << sbits[4]) - 1)) << n;
 
    n = n + sbits[4];
-   k |= iyy << n;
+   k |= (iyy & ((1u << sbits[5]) - 1)) << n;
 
    n = n + sbits[5];
-   k |= ztype << n;
+   k |= (ztype & ((1u << sbits[6]) - 1)) << n;
 
    n = n + sbits[6];
-   k |= iz << n;
+   k |= (iz & ((1u << sbits[7]) - 1)) << n;
 
    return k;
 }
@@ -158,7 +165,7 @@ int CaloXID::packKey(int type, int area, int ix, int iy, int ixx, int iyy, int z
 int CaloXID::unpackKey(unsigned int k)
 {
 
-   unsigned int sbits[8] = {3, 2, 5, 5, 3, 3, 2, 8}; // bits for packing (31 bits, type uses 3 bits for [1..4])
+   unsigned int sbits[8] = {3, 2, 5, 5, 1, 3, 2, 9}; // bits for packing (30 bits, type uses 3 bits for [1..4])
 
    unsigned int n = 0;
    unsigned int mask = (1 << sbits[0]) - 1;

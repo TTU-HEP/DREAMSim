@@ -29,8 +29,9 @@ public:
    double edepInv;
    double edepbirk;
    G4String process;
-   double ncer;    // number of cerenkov photons
-   double ncercap; // number of cerenkov photons
+   double ncer;     // number of cerenkov photons produced
+   double ncertrap; // number of cerenkov photons inside the capture cone (no PDE)
+   double ncercap;  // number of sampled photoelectrons (capture cone + SiPM PDE)
    int layerNumber;
    int rodNumber;
    int fiberNumber;

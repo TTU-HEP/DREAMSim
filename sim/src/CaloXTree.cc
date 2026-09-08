@@ -137,6 +137,7 @@ CaloXTree::CaloXTree(string macFileName, int argc, char **argv)
   tree->Branch("truthhit_edepbirk", &m_edepbirktruth);
   tree->Branch("truthhit_process", &m_processtruth);
   tree->Branch("truthhit_ncer", &m_ncertruth);
+  tree->Branch("truthhit_ncertrap", &m_ncertraptruth);
   tree->Branch("truthhit_ncercap", &m_ncercaptruth);
   tree->Branch("truthhit_layerNumber", &m_layerNumber);
   tree->Branch("truthhit_rodNumber", &m_rodNumber);
@@ -301,7 +302,7 @@ void CaloXTree::EndEvent()
         continue;
       double ncer = itr->second;
       if (round(ncer) < 1.0)
-        continue; // 1.0 cherenkov photon cut
+        continue; // drop cells with no detected photoelectron
       m_sum3dCC = m_sum3dCC + ncer;
       // m_ky3dCC.push_back(itr->first);  // this used for debugging.
       int ky = id.iy() * 10; // 6mm SiPM
@@ -332,7 +333,7 @@ void CaloXTree::EndEvent()
         continue;
       double ncer = itr->second;
       if (round(ncer) < 1.0)
-        continue;
+        continue; // drop cells with no detected photoelectron
       m_sum3dQQ = m_sum3dQQ + ncer;
       int ky = id.iy() * 10;
       if (area == 3)
@@ -362,7 +363,7 @@ void CaloXTree::EndEvent()
         continue;
       double edepbirk = itr->second;
       if (edepbirk < 0.0001)
-        continue; // 0.1 kev cut
+        continue; // 100 keV cut (edepbirk is in GeV)
       m_sum3dSS = m_sum3dSS + edepbirk;
       int ky = id.iy() * 10; // 6mm SiPM
       if (area == 3)
@@ -509,6 +510,7 @@ void CaloXTree::clearCaloXTree()
   m_edepbirktruth.clear();
   m_processtruth.clear();
   m_ncertruth.clear();
+  m_ncertraptruth.clear();
   m_ncercaptruth.clear();
   m_layerNumber.clear();
   m_rodNumber.clear();
@@ -620,7 +622,7 @@ void CaloXTree::accumulateHits(CaloXHit ah)
   if (saveTruthHits && ah.edep >= 1.0e-6 && (ah.calotype > 1 || (isMuon && ah.calotype == 1)))
   {
     // save the truth hit in the scintillating and cherenkov fibers.
-    // larger than 1 eV
+    // larger than 1 keV (edep is in GeV)
     m_pidtruth.push_back(ah.pid);
     m_trackidtruth.push_back(ah.trackid);
     m_calotypetruth.push_back(ah.calotype);
@@ -636,6 +638,7 @@ void CaloXTree::accumulateHits(CaloXHit ah)
     m_edepbirktruth.push_back(ah.edepbirk);
     m_processtruth.push_back(ah.process);
     m_ncertruth.push_back(ah.ncer);
+    m_ncertraptruth.push_back(ah.ncertrap);
     m_ncercaptruth.push_back(ah.ncercap);
     m_layerNumber.push_back(ah.layerNumber);
     m_rodNumber.push_back(ah.rodNumber);

@@ -168,6 +168,7 @@ private:
   vector<double> m_edepbirktruth;
   vector<std::string> m_processtruth;
   vector<double> m_ncertruth;
+  vector<double> m_ncertraptruth;
   vector<double> m_ncercaptruth;
   vector<int> m_layerNumber;
   vector<int> m_rodNumber;

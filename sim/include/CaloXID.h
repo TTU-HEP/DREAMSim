@@ -37,15 +37,15 @@ private:
    int _rod;   // [1,90] horizontal axis
    int _fiber; // c[1,5], s[1,3]
 
-   // key   (31 bits total)
+   // key   (30 bits total)
    //   _type (3 bits)   1=rod, 2=sc, 3=cher-plastic, 4=cher-quartz
    //   _area (2 bits)   0=Al-block, 1=no-SiPM, 2=6mm, 3=3mm
    //   _ix   (5 bits)   [0,29]
    //   _iy   (5 bits)   [0,19]
-   //   _ixx  (3 bits)   [0]
+   //   _ixx  (1 bit)    [0]
    //   _iyy  (3 bits)   [0,7]
    //   _ztype  (2 bit)  1=zslice, 2=tslice, 3=2D
-   //   _iz   (8 bits)   [0,255]
+   //   _iz   (9 bits)   [0,511]
 
    int _type; // [1,4]   1=rod, 2=sc, 3=cer-plastic, 4=cer-quartz
    int _area; //
@@ -55,8 +55,8 @@ private:
    int _ix;     // rod/nx    [0,29]
    int _iy;     // layer/ny  [0,19]
    int _ztype;  // 1=zslice, 2=tslice, 3=2D
-   int _zslice; //  [0,255]
-   int _tslice; //  [0,255]
+   int _zslice; //  [0,500]
+   int _tslice; //  [0,511]
 
    int _nxx; //  =1: numbe of subchannels in x (3mm SiPM)
    int _nyy; //  =8: number of subchannel in y (3mm SiPM)
