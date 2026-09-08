@@ -61,6 +61,8 @@ private:
   void   initOptics();          // performs the one-time lookup
   double findInvisible(const G4Step *step, bool verbose = false);
   void fillOPInfo(const G4Step *step, bool verbose = false);
+
+  bool saveOpticalPhotons = false; //  mirrors the CaloXTree flag of the same name
 };
 
 

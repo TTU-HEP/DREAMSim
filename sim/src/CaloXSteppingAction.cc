@@ -41,8 +41,11 @@ CaloXSteppingAction::CaloXSteppingAction(CaloXEventAction *eventAction, CaloXTre
   // Read optical photon sampling rod/layer from mac parameters (defaults: 45, 40)
   opSampleRod   = histo->getParamI("opSampleRod",   false, 45);
   opSampleLayer = histo->getParamI("opSampleLayer", false, 40);
+  saveOpticalPhotons = histo->getSaveOpticalPhotons();
   std::cout << "Optical photon sampling: rod=" << opSampleRod
-            << "  layer=" << opSampleLayer << std::endl;
+            << "  layer=" << opSampleLayer
+            << "  saveOpticalPhotons=" << (saveOpticalPhotons ? "true" : "false")
+            << std::endl;
 
 
 
@@ -933,6 +936,15 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
         int fiberType = isCoreS ? 0 : (isCoreC ? 1 : 2); // 0=scint, 1=plastic, 2=quartz
         hh->accumulateOPsCer(fiberType, 1);
       }
+    }
+
+    //  The per-photon record is the only consumer of the tracking below, so with
+    //  saving off there is nothing left to do once the counters above are filled.
+    //  Killing here also spares the O(10^5) photons per shower their tracking.
+    if (!saveOpticalPhotons)
+    {
+      track->SetTrackStatus(fStopAndKill);
+      return;
     }
 
     // For non-sample rods, only core photons can be guided — skip clad-born photons

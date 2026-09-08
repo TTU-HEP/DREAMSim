@@ -6,6 +6,7 @@
 #$$$ eventsInNtuple     10     (maximum number of events in ntuple output file)
 #$$$ opSampleRod      45    (rod index for optical photon tracking; default=45)
 #$$$ opSampleLayer    40    (layer index for optical photon tracking; default=40)
+#$$$ saveOpticalPhotons  false   (true to write the per-photon OP_* branches; large files)
 
 #$$$ rootPre       mc      (file name will be Pre+runName+runNumber+runSeq+runConfig+NoE.root)
 #$$$ createNtuple  true    (true or false))

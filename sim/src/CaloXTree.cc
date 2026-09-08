@@ -86,6 +86,15 @@ CaloXTree::CaloXTree(string macFileName, int argc, char **argv)
   if (getParamS("saveTruthHits").compare(0, 4, "true") == 0)
     saveTruthHits = true;
 
+  //  One record per optical photon is written for every core photon in every
+  //  rod, which is O(10^5) photons per 100 GeV shower and dominates the file
+  //  size.  Off unless the mac file asks for it; the cheap per-event counters
+  //  (nOPsCer, nOPsCer_Pla/Qua/Sci) are always written.
+  saveOpticalPhotons = getParamB("saveOpticalPhotons", false, false);
+  std::cout << "  saveOpticalPhotons : " << (saveOpticalPhotons ? "true" : "false")
+            << (saveOpticalPhotons ? "  (per-photon OP_* branches ON -- large files)" : "")
+            << std::endl;
+
   //  ========  root histogram, ntuple file ===========
   fout = new TFile(outRootName.c_str(), "recreate");
 
@@ -193,6 +202,13 @@ CaloXTree::CaloXTree(string macFileName, int argc, char **argv)
   tree->Branch("ph3dQQ", &m_ph3dQQ);
   tree->Branch("sum3dQQ", &m_sum3dQQ);
 
+  tree->Branch("nOPsCer",     &mP_nOPsCer);
+  tree->Branch("nOPsCer_Pla", &mP_nOPsCer_Pla);
+  tree->Branch("nOPsCer_Qua", &mP_nOPsCer_Qua);
+  tree->Branch("nOPsCer_Sci", &mP_nOPsCer_Sci);
+
+  if (saveOpticalPhotons)
+  {
   tree->Branch("nOPs", &mP_nOPs);
   tree->Branch("OP_trackid", &mP_trackid);
   tree->Branch("OP_pos_produced_x", &mP_pos_produced_x);
@@ -225,11 +241,6 @@ CaloXTree::CaloXTree(string macFileName, int argc, char **argv)
   tree->Branch("OP_pol_y", &mP_pol_y);
   tree->Branch("OP_pol_z", &mP_pol_z);
 
-  tree->Branch("nOPsCer",     &mP_nOPsCer);
-  tree->Branch("nOPsCer_Pla", &mP_nOPsCer_Pla);
-  tree->Branch("nOPsCer_Qua", &mP_nOPsCer_Qua);
-  tree->Branch("nOPsCer_Sci", &mP_nOPsCer_Sci);
-
   // Meridional (pz-only) analytical result
   tree->Branch("OP_isCaptured_m",            &mP_isCaptured_m);
   tree->Branch("OP_isAttenuated_m",          &mP_isAttenuated_m);
@@ -240,6 +251,7 @@ CaloXTree::CaloXTree(string macFileName, int argc, char **argv)
   tree->Branch("OP_isAttenuated_s",          &mP_isAttenuated_s);
   tree->Branch("OP_captureAngle_s",          &mP_captureAngle_s);
   tree->Branch("OP_analyticalArrivalTime_s", &mP_analyticalArrivalTime_s);
+  } //  end of if (saveOpticalPhotons)
 }
 
 // ########################################################################
@@ -387,7 +399,7 @@ void CaloXTree::EndEvent()
 
     // optical photon hits
     for (auto const photon : photonData)
-    {
+    { //  photonData stays empty unless saveOpticalPhotons is set
       // if (photon.exitTime == 0.0)
       //   continue;
       mP_trackid.push_back(photon.trackID);

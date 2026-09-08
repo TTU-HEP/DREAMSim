@@ -52,6 +52,8 @@ public:
   void accumulateHits(CaloXHit aHit);
   void accumulateEnergy(double eleak, int type);
   void accumulateOPsCer(int fiberType = 0, int nOPs = 1); // fiberType: 0=scint, 1=plastic, 2=quartz
+
+  bool getSaveOpticalPhotons() { return saveOpticalPhotons; }
   void saveBeamXYZEPxPyPz(string, int, float, float, float, float, float, float, float);
 
   vector<CaloXPhotonInfo> photonData;
@@ -84,6 +86,7 @@ private:
   bool createNtuple;
 
   bool saveTruthHits;
+  bool saveOpticalPhotons; //  write the per-photon OP_* branches (large)
   bool isMuon;
 
   // hit data in csv file
