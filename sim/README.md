@@ -18,6 +18,11 @@ make -j 8
 `cmake` copies the `.mac` files and `data/fibermap.json` next to the executable,
 so the defaults resolve when you run from the build directory.
 
+The build type defaults to `Release`. Compiling takes a few seconds either way,
+while an unoptimised binary runs about twice as slow — 10.6 s per 100 GeV e+
+event against 5.0 s. Pass `-DCMAKE_BUILD_TYPE=Debug` when you want to step
+through the code.
+
 ### Geometry
 
 The calorimeter is 90 copper rods across (x) by 80 layers (y), each rod 0.4 x

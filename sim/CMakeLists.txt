@@ -8,6 +8,17 @@ endif()
 project(CaloX)
 
 #----------------------------------------------------------------------------
+# Default to an optimised build.  Compiling takes about the same either way (a
+# few seconds), while an unoptimised binary runs about twice as slow: 10.6 s per
+# 100 GeV e+ event against 5.0 s.  Override with -DCMAKE_BUILD_TYPE=Debug when
+# stepping through the code.
+#
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+message(STATUS "CaloX build type: ${CMAKE_BUILD_TYPE}")
+
+#----------------------------------------------------------------------------
 # Find Geant4 package, activating all available UI and Vis drivers by default
 # You can set WITH_GEANT4_UIVIS to OFF via the command line or ccmake/cmake-gui
 # to build a batch mode only executable
