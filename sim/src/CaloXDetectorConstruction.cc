@@ -484,13 +484,24 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     //  replicas share one logical volume and so cannot differ from each other.
     //  The physical volume is called "Rod" in all three cases: the stepping
     //  action recognises rods by that name.
+    //  Rods tile the calorimeter exactly (calorSizeX = noRods * rodSize, and the
+    //  same in y), so the copper of the Calorimeter and Layer volumes is never
+    //  actually reached: what a rod is made of is what is there.  A rod outside
+    //  the detector outline is therefore filled with air rather than copper, and
+    //  is called "AirGap" instead of "Rod" so that the stepping action does not
+    //  count it as absorber -- it falls through to caloType 0, which contributes
+    //  to eCalotruth but not to eRodtruth.
     auto rodS = new G4Box("Rod", rodSize / 2.0, rodSize / 2.0, calorSizeZ / 2.);
-    G4LogicalVolume *rodLV[3] = {nullptr, nullptr, nullptr}; //  indexed by CaloXFiberMap::Type
-    const char *rodName[3] = {"RodEmpty", "RodPlastic", "RodQuartz"};
-    for (int t = 0; t < 3; ++t)
+    G4LogicalVolume *rodLV[CaloXFiberMap::kNTypes] = {nullptr, nullptr, nullptr, nullptr};
+    const char *rodLogName[CaloXFiberMap::kNTypes] = {"RodEmpty", "RodPlastic", "RodQuartz",
+                                                      "AirGap"};
+    const char *rodPhysName[CaloXFiberMap::kNTypes] = {"Rod", "Rod", "Rod", "AirGap"};
+    for (int t = 0; t < CaloXFiberMap::kNTypes; ++t)
     {
-        rodLV[t] = new G4LogicalVolume(rodS, calorMaterial, rodName[t]);
-        if (t != CaloXFiberMap::kEmpty)
+        const bool absent = (t == CaloXFiberMap::kAbsent);
+        rodLV[t] = new G4LogicalVolume(rodS, absent ? defaultMaterial : calorMaterial,
+                                       rodLogName[t]);
+        if (t == CaloXFiberMap::kPlastic || t == CaloXFiberMap::kQuartz)
             new G4PVPlacement(0, G4ThreeVector(), holeLV[t == CaloXFiberMap::kQuartz ? 1 : 0],
                               "Hole", rodLV[t], false, 0, fCheckOverlaps);
     }
@@ -527,7 +538,7 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
                 new G4PVPlacement(
                     0,
                     G4ThreeVector((rod + 0.5) * rodSize - calorSizeX / 2.0, 0., 0.),
-                    rodLV[t], "Rod", thisLayerLV, false, rod, fCheckOverlaps);
+                    rodLV[t], rodPhysName[t], thisLayerLV, false, rod, fCheckOverlaps);
             }
             layerByPattern[pattern] = thisLayerLV;
             thisLayerLV->SetVisAttributes(new G4VisAttributes(FALSE, G4Colour(0.0, 1.0, 0.0, 0.6)));
@@ -555,7 +566,7 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
 
     worldLV->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.0, 0.0, 1.0, 0.5)));  // blue
     calorLV->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(1.0, 0.0, 0.0, 0.1)));  // red
-    for (int t = 0; t < 3; ++t)
+    for (int t = 0; t < CaloXFiberMap::kNTypes; ++t)
         rodLV[t]->SetVisAttributes(new G4VisAttributes(FALSE, G4Colour(0.0, 0.0, 0.0, 0.6))); // blue
     for (int flavour = 0; flavour < 2; ++flavour)
         holeLV[flavour]->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(1.0, 1.0, 1.0, 0.5))); // white

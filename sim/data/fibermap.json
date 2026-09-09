@@ -8,8 +8,8 @@
   "legend": {
     "Q": "4 quartz Cherenkov + 3 scintillating fibers",
     "P": "4 plastic Cherenkov + 3 scintillating fibers",
-    ".": "no fibers, solid copper (drawn red)",
-    "_": "no fibers, solid copper (outside the drawn detector)",
+    ".": "solid copper with no fibers (drawn red)",
+    "_": "no copper at all, air (outside the drawn detector outline)",
     "*": "taken from the central grid below"
   },
   "gridNote": "one row per iy, listed from iy = nLayers/layersPerCellY - 1 (top) down to iy = 0; one character per ix = 0 (left) to nRods/rodsPerCellX - 1 (right)",

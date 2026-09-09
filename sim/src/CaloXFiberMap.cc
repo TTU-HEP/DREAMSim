@@ -69,7 +69,11 @@ CaloXFiberMap::Type CaloXFiberMap::fromChar(char c)
       return kQuartz;
    if (c == 'P' || c == 'p')
       return kPlastic;
-   return kEmpty; //  '.', '_' and anything unexpected: no fibers
+   if (c == '_')
+      return kAbsent; //  outside the detector outline: no copper
+   //  '.' is a copper that is drawn but carries no fibers.  Anything the map
+   //  does not define falls here too, which keeps the absorber intact.
+   return kEmpty;
 }
 
 bool CaloXFiberMap::load(const std::string &fileName)
@@ -167,7 +171,7 @@ bool CaloXFiberMap::load(const std::string &fileName)
 CaloXFiberMap::Type CaloXFiberMap::type(int rod, int layer) const
 {
    if (!fLoaded || rod < 0 || layer < 0 || rod >= fNRods || layer >= fNLayers)
-      return kEmpty;
+      return kAbsent;
 
    const int ix = rod / fRodsPerCellX;
    const int iy = layer / fLayersPerCellY;
@@ -193,25 +197,19 @@ void CaloXFiberMap::print() const
       return;
    }
 
-   long nQ = 0, nP = 0, nE = 0;
+   long n[kNTypes] = {0, 0, 0, 0};
    for (int layer = 0; layer < fNLayers; ++layer)
       for (int rod = 0; rod < fNRods; ++rod)
-      {
-         switch (type(rod, layer))
-         {
-         case kQuartz: ++nQ; break;
-         case kPlastic: ++nP; break;
-         default: ++nE; break;
-         }
-      }
+         ++n[type(rod, layer)];
 
    std::cout << "CaloXFiberMap: " << fNRods << " rods x " << fNLayers << " layers, cells of "
              << fRodsPerCellX << " x " << fLayersPerCellY << std::endl;
    if (!fCentral.empty())
       std::cout << "  central region (1 layer per cell): ix " << fIxMin << ".." << fIxMax
                 << ", iy " << fIyMin << ".." << fIyMax << std::endl;
-   std::cout << "  coppers: " << nQ << " quartz (4C+3S), " << nP << " plastic (4C+3S), "
-             << nE << " empty" << std::endl;
+   std::cout << "  coppers: " << n[kQuartz] << " quartz (4C+3S), " << n[kPlastic]
+             << " plastic (4C+3S), " << n[kEmpty] << " bare copper, " << n[kAbsent]
+             << " absent (air, no copper)" << std::endl;
 
    //  One character per cell, highest iy first, so the run log shows the map
    //  that was actually built.
@@ -230,8 +228,14 @@ void CaloXFiberMap::print() const
                mixed = true;
          if (mixed)
             line += '*'; //  central cells, which differ layer by layer
+         else if (t0 == kQuartz)
+            line += 'Q';
+         else if (t0 == kPlastic)
+            line += 'P';
+         else if (t0 == kEmpty)
+            line += '.'; //  copper, no fibers
          else
-            line += (t0 == kQuartz ? 'Q' : (t0 == kPlastic ? 'P' : '.'));
+            line += ' '; //  no copper
       }
       std::cout << "  " << line << "   iy=" << iy << std::endl;
    }

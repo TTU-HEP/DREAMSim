@@ -8,7 +8,8 @@
 //
 //  The real detector is not uniform: a copper either carries 4 quartz Cherenkov
 //  fibers plus 3 scintillating ones, or 4 plastic Cherenkov fibers plus 3
-//  scintillating ones, or no fibers at all.  Which of the three it is, is given
+//  scintillating ones, or no fibers at all -- and outside the detector outline
+//  there is no copper either.  Which of the four it is, is given
 //  per cell of 3 rods (x) by 4 layers (y) -- the same cells that CaloXID uses
 //  for the readout, so cell (ix, iy) here is exactly CaloXID::ix(), iy().  In
 //  the central region the cells are 3 rods by 1 layer instead, and are indexed
@@ -20,9 +21,11 @@ class CaloXFiberMap
 public:
    enum Type
    {
-      kEmpty = 0,  //  solid copper, no fibers
+      kEmpty = 0,   //  solid copper, no fibers
       kPlastic = 1, //  4 plastic Cherenkov + 3 scintillating
-      kQuartz = 2  //  4 quartz Cherenkov  + 3 scintillating
+      kQuartz = 2,  //  4 quartz Cherenkov  + 3 scintillating
+      kAbsent = 3,  //  outside the detector outline: no copper at all, just air
+      kNTypes = 4
    };
 
    CaloXFiberMap();
@@ -33,8 +36,9 @@ public:
 
    bool loaded() const { return fLoaded; }
 
-   //  The fiber content of one copper.  Rods and layers outside the map, and
-   //  any character the map does not recognise, come back as kEmpty.
+   //  The fiber content of one copper.  Rods and layers outside the map come
+   //  back as kAbsent; a character the map does not recognise comes back as
+   //  kEmpty, which is the conservative choice of copper without fibers.
    Type type(int rod, int layer) const;
 
    int nRods() const { return fNRods; }

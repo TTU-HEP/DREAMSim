@@ -6,8 +6,8 @@ box stacked on top of a blue box:
 
     green  over blue  -> 4 plastic Cherenkov + 3 scintillating fibers   ('P')
     orange over blue  -> 4 quartz  Cherenkov + 3 scintillating fibers   ('Q')
-    red    over red   -> no fibers, solid copper                        ('.')
-    nothing drawn     -> outside the detector, solid copper             ('_')
+    red    over red   -> solid copper with no fibers                    ('.')
+    nothing drawn     -> outside the outline, no copper at all          ('_')
 
 The central region (area 3 in CaloXID) is drawn as an inset in the detector plot
 and separately, much more legibly, in the zoomed plot.  There one cell is 3 (x)
@@ -259,8 +259,8 @@ def main():
         "legend": {
             "Q": "4 quartz Cherenkov + 3 scintillating fibers",
             "P": "4 plastic Cherenkov + 3 scintillating fibers",
-            ".": "no fibers, solid copper (drawn red)",
-            "_": "no fibers, solid copper (outside the drawn detector)",
+            ".": "solid copper with no fibers (drawn red)",
+            "_": "no copper at all, air (outside the drawn detector outline)",
             "*": "taken from the central grid below",
         },
         "gridNote": ("one row per iy, listed from iy = nLayers/layersPerCellY - 1 "
