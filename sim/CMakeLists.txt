@@ -60,16 +60,11 @@ target_link_libraries(CaloXSim ${ROOT_LIBRARIES})
 # relies on these scripts being in the current working directory.
 #
 set(EXAMPLECALOX_SCRIPTS
-  gui.mac
-  init_vis.mac
-  run1.mac
-  run2.mac
   vis.mac
   paramBatch03_single.mac
+  paramBatch03_single_photon.mac
   paramBatch03_single_rotated.mac
   paramBatch03_jet.mac
-  runBatch03_single_param.sh
-  runBatch03_single_param_bg01.sh
   )
 
 

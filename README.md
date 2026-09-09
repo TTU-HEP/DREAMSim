@@ -91,7 +91,7 @@ two parts of it that still want checking against the engineering drawings.
     -sipmType 1
 ```
 
-All run parameters are defined in `paramBatch03_single.mac` and may be overridden on the command line or via `runBatch03_single_param.sh`.
+All run parameters are defined in `paramBatch03_single.mac` and may be overridden on the command line.
 
 The fiber map has to be reachable from the working directory. `cmake` copies it
 to `data/fibermap.json` next to the executable, so running from the build
