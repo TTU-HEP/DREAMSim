@@ -20,8 +20,21 @@ so the defaults resolve when you run from the build directory.
 
 ### Geometry
 
-The calorimeter is a box of copper, 90 rods across (x) by 80 layers (y), each rod
-0.4 x 0.4 cm in cross section and 250 cm long. The nesting is
+The calorimeter is 90 copper rods across (x) by 80 layers (y), each rod 0.4 x
+0.4 cm in cross section. The copper is 2 m long and the fibers are 2.5 m: they
+start at the front face of the copper and run 50 cm past its back, where the
+light is guided out to the SiPMs. So the copper spans z = -100..+100 cm and the
+fibers z = -100..+150 cm.
+
+The copper length is not free. `CaloXID` measures z from `z0 = -1000 mm` over a
+calorimeter of `zback = 2000 mm`, and the leakage split in `CaloXSteppingAction`
+is taken at `z = 100 cm`, so the readout already assumes exactly this. The
+calorimeter envelope is air, symmetric about the copper and long enough to reach
+the far end of the fibers, which lets it be placed and rotated exactly as the
+copper itself. The `Calorimeter` and `Layer` volumes are air throughout — all
+the absorber is in the rods.
+
+The nesting is
 
 ```
 World -> Calorimeter -> Layer -> Rod -> Hole -> fiber cladding -> fiber core
@@ -46,11 +59,20 @@ There are four kinds of rod:
 | `RodPlastic` | a hole with 4 plastic Cherenkov + 3 scintillating fibers |
 | `RodEmpty`   | solid copper, no hole |
 | `AirGap`     | air — outside the detector outline, no copper at all |
+| `FiberTail`  | air — past the back of the copper, holding the last 50 cm of fiber |
 
 The first three are placed as physical volume `Rod`, which is how the stepping
-action recognises absorber. `AirGap` deliberately is not, so it falls through to
-`caloType 0` and contributes to `eCalotruth` but not to `eRodtruth` — the same
-treatment the air inside the fiber holes gets.
+action recognises absorber. `AirGap` and `FiberTail` deliberately are not, so
+they fall through to `caloType 0` and contribute to `eCalotruth` but not to
+`eRodtruth` — the same treatment the air inside the fiber holes gets.
+
+A `FiberTail` sits at the same nesting depth as a rod and carries the same copy
+number, so a step in a tail fiber reports the same rod and layer as one in the
+copper. Because of that the fiber is built as two segments, the 2 m inside the
+copper and the 50 cm tail, which keeps every volume a simple box or tube and
+lets the copper carve its own hole. The segments meet face to face at z = +100
+cm with the same material on both sides and no optical surface between them, so
+a photon crosses the joint without noticing it.
 
 #### Fibers within a copper
 
@@ -60,9 +82,9 @@ three carry scintillating fibers:
 
 ```
             90 S
-     150 S        30 C
+     150 C        30 C
             0 C            <- on the axis
-     210 C        330 S
+     210 S        330 S
             270 C
 ```
 
@@ -142,6 +164,7 @@ detector and the output size:
 | Parameter | Default | Meaning |
 |-----------|---------|---------|
 | `fiberMapFile` | `data/fibermap.json` | the map described above; required |
+| `fiberTailLength` | 50.0 | cm the fibers run past the 2 m copper; 0 gives 2 m fibers |
 | `saveOpticalPhotons` | `false` | write the per-photon `OP_*` branches |
 | `saveTruthHits` | — | write the per-step `truthhit_*` branches |
 | `opSampleRod`, `opSampleLayer` | 45, 40 | the one rod whose optical photons are tracked past their first step |
@@ -176,6 +199,12 @@ One `TTree` named `tree`. The branches most easily misread:
 - `truthhit_ncercap` — sampled photoelectrons, an integer count.
 - `eScintruth`, `ePlatruth`, `eQuatruth`, `eRodtruth` — energy deposited in each
   fiber type and in the copper, in GeV, with no acceptance cuts.
+- `eInvisible` — nuclear binding energy and the like, from `findInvisible`,
+  which reconstructs it per step. It subtracts the rest mass of protons and
+  neutrons created out of the vacuum but not that of pions, so an event with a
+  photonuclear pion carries about 135 MeV of energy that was never there, and
+  `eCalotruth + eWorldtruth + eLeaktruth + eInvisible` overshoots the beam
+  energy by that much. It fires in a couple of events in ten at 100 GeV.
 
 The light-trapping model is a fixed cone, `theta < 0.336` about the global z
 axis at the point of production, with no propagation, attenuation or cladding

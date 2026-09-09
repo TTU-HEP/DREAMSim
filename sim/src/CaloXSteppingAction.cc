@@ -779,12 +779,14 @@ static void computeAnalyticalTIR(CaloXPhotonInfo &photon,
                                   const G4ThreeVector &pdir,
                                   const G4ThreeVector &pos,
                                   double n_core, double n_clad,
-                                  double R_core, double fiber_half_z,
+                                  double R_core, double fiber_front_z, double fiber_back_z,
                                   double global_time,
                                   double abs_len)
 {
   const double abs_pz      = std::abs(pdir.z());
-  const double z_exit      = (pdir.z() >= 0.0) ? fiber_half_z : -fiber_half_z;
+  //  The fiber is not centred on the origin: it starts at the front face of the
+  //  copper and ends 50 cm past its back, so the two ends are at different |z|.
+  const double z_exit      = (pdir.z() >= 0.0) ? fiber_back_z : fiber_front_z;
   const double z_travel    = std::abs(z_exit - pos.z());
   const double tir_thresh  = n_clad / n_core;
 
@@ -869,6 +871,16 @@ void CaloXSteppingAction::initOptics()
   fR_Core     = coreTubs->GetOuterRadius();
   fFiberHalfZ = coreTubs->GetZHalfLength();
 
+  //  The in-copper segment is centred on the origin, and the tail is butted onto
+  //  its downstream face, so the fiber runs from -fFiberHalfZ to fFiberHalfZ plus
+  //  twice the tail's half-length.
+  double tailHalfZ = 0.0;
+  if (auto *tailVol = G4LogicalVolumeStore::GetInstance()->GetVolume("fiberCoreSTail", false))
+    if (auto *tailTubs = dynamic_cast<G4Tubs *>(tailVol->GetSolid()))
+      tailHalfZ = tailTubs->GetZHalfLength();
+  fFiberFrontZ = -fFiberHalfZ;
+  fFiberBackZ  = fFiberHalfZ + 2.0 * tailHalfZ;
+
   std::cout << "Fiber optics (from material tables):\n"
             << "  S-fiber:       n_core=" << fN_CoreS << "  n_clad=" << fN_CladS
             << "  abs_len=" << fAbsLen_CoreS/m << " m\n"
@@ -877,7 +889,8 @@ void CaloXSteppingAction::initOptics()
             << "  C-fiber(Quartz):  n_core=" << fN_CoreQ << "  n_clad=" << fN_CladQ
             << "  abs_len=" << fAbsLen_CoreQ/m << " m\n"
             << "  R_core=" << fR_Core/mm << " mm"
-            << "  half-z=" << fFiberHalfZ/cm << " cm" << std::endl;
+            << "  fiber z=" << fFiberFrontZ/cm << ".." << fFiberBackZ/cm << " cm"
+            << " (in copper to " << fFiberHalfZ/cm << " cm)" << std::endl;
 
   fOpticsInitialised = true;
 }
@@ -893,8 +906,9 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
   const double N_CLAD_C     = fN_CladC;
   const double N_CORE_Q     = fN_CoreQ;
   const double N_CLAD_Q     = fN_CladQ;
-  const double R_CORE       = fR_Core;
-  const double FIBER_HALF_Z = fFiberHalfZ;
+  const double R_CORE        = fR_Core;
+  const double FIBER_FRONT_Z = fFiberFrontZ;
+  const double FIBER_BACK_Z  = fFiberBackZ;
 
   G4Track      *track        = step->GetTrack();
   G4StepPoint  *preStepPoint = step->GetPreStepPoint();
@@ -982,7 +996,7 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
       computeAnalyticalTIR(photon,
                            track->GetMomentumDirection(),
                            preStepPoint->GetPosition(),
-                           n_core, n_clad, R_CORE, FIBER_HALF_Z,
+                           n_core, n_clad, R_CORE, FIBER_FRONT_Z, FIBER_BACK_Z,
                            track->GetGlobalTime(), abs_len);
     }
 

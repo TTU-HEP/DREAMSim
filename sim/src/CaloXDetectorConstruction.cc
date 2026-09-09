@@ -134,7 +134,27 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     //   chts[100]
     //
     // Geometry parameters
-    double fiberLength = 250.0 * cm;
+    //
+    //  The copper is 2 m long and the fibers are 2.5 m: they start at the front
+    //  face of the copper and run 50 cm past its back face, where the light is
+    //  guided out to the SiPMs.  So the copper spans z = -100..+100 cm and the
+    //  fibers z = -100..+150 cm, which is what the readout already assumes --
+    //  CaloXID measures z from z0 = -1000 mm over a calorimeter of zback =
+    //  2000 mm, and the leakage split in CaloXSteppingAction is taken at
+    //  z = 100 cm.  The calorimeter envelope is air and symmetric about the
+    //  copper, so it is placed and rotated exactly as the copper itself.
+    //  The copper length is fixed at 2 m because the readout depends on it:
+    //  CaloXID measures z from z0 = -1000 mm over zback = 2000 mm, and the
+    //  leakage split in CaloXSteppingAction is taken at z = 100 cm.
+    //  fiberTailLength is how far the fibers run past the back of the copper;
+    //  set it to 0 for fibers that stop at the copper, i.e. 2 m of fiber.
+    double copperLength = 200.0 * cm;
+    double fiberTailLength = hh->getParamF("fiberTailLength", false, 50.0) * cm;
+    double fiberLength = copperLength + fiberTailLength;
+    const bool hasTail = (fiberTailLength > 0.0);
+    std::cout << "CaloXDetectorConstruction: copper " << copperLength / cm
+              << " cm, fibers " << fiberLength / cm << " cm ("
+              << fiberTailLength / cm << " cm past the copper)" << std::endl;
     double holeDiameter = 0.25 * cm;
     double rodSize = 0.4 * cm;
     //  Taken from the fiber map so the two can never disagree (nominally 80 x 90).
@@ -144,7 +164,10 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
 
     double calorSizeX = rodSize * noRods;
     double calorSizeY = rodSize * noLayers;
-    double calorSizeZ = fiberLength;
+    //  Half-length reaches the far end of the fibers; the 50 cm of air this
+    //  leaves in front of the copper costs nothing and keeps the envelope
+    //  centred on the copper.
+    double calorSizeZ = 2.0 * (copperLength / 2.0 + fiberTailLength);
 
     // Use the calorimeter's space diagonal as the world half-size so that
     // any rotation (including 90° around Y) is always fully contained.
@@ -205,9 +228,9 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
                                   calorSizeX / 2., calorSizeY / 2., calorSizeZ / 2.); // its size
 
     auto calorLV = new G4LogicalVolume(
-        calorimeterS,   // its solid
-        calorMaterial,  // its material
-        "Calorimeter"); // its name
+        calorimeterS,    // its solid
+        defaultMaterial, // air: the copper lives in the rods, not here
+        "Calorimeter");  // its name
 
     G4RotationMatrix *xRot = new G4RotationMatrix; // Rotates X and Z axes only
     xRot->rotateX(hh->getParamF("caloRotationX") * deg);
@@ -412,21 +435,51 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
 
     // creating fibers solids
     // G4cout << "r_clad= " << clad_Plastic_rMax << " r_coreC=" << core_Plastic_rMax << " r_coreS=" << core_S_rMax << G4endl;
-    auto fiber = new G4Tubs("Fiber", 0, clad_Plastic_rMax, fiberLength / 2., 0 * deg, 360. * deg); // S is the same
-    auto fiberC = new G4Tubs("fiberC", 0, core_Plastic_rMax, fiberLength / 2., 0 * deg, 360. * deg);
-    auto fiberS = new G4Tubs("fiberS", 0, core_S_rMax, fiberLength / 2., 0 * deg, 360. * deg);
+    //  A fiber runs the whole 2.5 m, but only its first 2 m sit inside a copper
+    //  rod; the last 50 cm stick out of the back.  It is therefore built as two
+    //  segments, the in-copper one and the tail, so that every volume stays a
+    //  simple box or tube and the copper can still carve its own hole.  The two
+    //  segments meet face to face at z = +100 cm with the same material on both
+    //  sides and no optical surface between them, so a photon crosses the joint
+    //  without noticing it.
+    //
+    //  Index 0 is the segment inside the copper, index 1 the tail.
+    const double segHalfZ[2] = {copperLength / 2.0, fiberTailLength / 2.0};
+    G4LogicalVolume *fiberCladLog[2][3] = {{nullptr, nullptr, nullptr}, {nullptr, nullptr, nullptr}};
+    G4LogicalVolume *fiberCoreLog[2][3] = {{nullptr, nullptr, nullptr}, {nullptr, nullptr, nullptr}};
 
-    auto fiberPlasticLog = new G4LogicalVolume(fiber, clad_Plastic_Material, "fiberCladPlastic");
-    auto fiberQuartzLog = new G4LogicalVolume(fiber, clad_Quartz_Material, "fiberCladQuartz");
-    auto fiberSLog = new G4LogicalVolume(fiber, clad_S_Material, "fiberCladS");
+    for (int seg = 0; seg < (hasTail ? 2 : 1); ++seg)
+    {
+        const G4String tag = (seg == 0) ? "" : "Tail";
+        auto fiber = new G4Tubs("Fiber" + tag, 0, clad_Plastic_rMax, segHalfZ[seg], 0 * deg, 360. * deg); // S is the same
+        auto fiberC = new G4Tubs("fiberC" + tag, 0, core_Plastic_rMax, segHalfZ[seg], 0 * deg, 360. * deg);
+        auto fiberS = new G4Tubs("fiberS" + tag, 0, core_S_rMax, segHalfZ[seg], 0 * deg, 360. * deg);
 
-    G4LogicalVolume *fiberCorePlasticLog = new G4LogicalVolume(fiberC, core_Plastic_Material, "fiberCorePlastic");
-    G4LogicalVolume *fiberCoreQuartzLog = new G4LogicalVolume(fiberC, core_Quartz_Material, "fiberCoreQuartz");
-    G4LogicalVolume *fiberCoreSLog = new G4LogicalVolume(fiberS, core_S_Material, "fiberCoreS");
+        fiberCladLog[seg][0] = new G4LogicalVolume(fiber, clad_Plastic_Material, "fiberCladPlastic" + tag);
+        fiberCladLog[seg][1] = new G4LogicalVolume(fiber, clad_Quartz_Material, "fiberCladQuartz" + tag);
+        fiberCladLog[seg][2] = new G4LogicalVolume(fiber, clad_S_Material, "fiberCladS" + tag);
 
-    new G4PVPlacement(0, G4ThreeVector(0, 0, 0), fiberCorePlasticLog, "fiberCoreCherePlasticPhys", fiberPlasticLog, false, 0);
-    new G4PVPlacement(0, G4ThreeVector(0, 0, 0), fiberCoreQuartzLog, "fiberCoreChereQuartzPhys", fiberQuartzLog, false, 0);
-    new G4PVPlacement(0, G4ThreeVector(0, 0, 0), fiberCoreSLog, "fiberCoreScintPhys", fiberSLog, false, 0);
+        //  The core volume of the in-copper segment keeps its bare name, because
+        //  CaloXSteppingAction::initOptics looks up "fiberCoreS" to read the
+        //  refractive indices and the fiber radius out of the material tables.
+        fiberCoreLog[seg][0] = new G4LogicalVolume(fiberC, core_Plastic_Material, "fiberCorePlastic" + tag);
+        fiberCoreLog[seg][1] = new G4LogicalVolume(fiberC, core_Quartz_Material, "fiberCoreQuartz" + tag);
+        fiberCoreLog[seg][2] = new G4LogicalVolume(fiberS, core_S_Material, "fiberCoreS" + tag);
+
+        //  The physical volume names are the same for both segments: they are how
+        //  the stepping action tells scintillating from Cherenkov fibers, and a
+        //  step is the same kind of step whichever segment it happens in.
+        new G4PVPlacement(0, G4ThreeVector(), fiberCoreLog[seg][0], "fiberCoreCherePlasticPhys", fiberCladLog[seg][0], false, 0);
+        new G4PVPlacement(0, G4ThreeVector(), fiberCoreLog[seg][1], "fiberCoreChereQuartzPhys", fiberCladLog[seg][1], false, 0);
+        new G4PVPlacement(0, G4ThreeVector(), fiberCoreLog[seg][2], "fiberCoreScintPhys", fiberCladLog[seg][2], false, 0);
+    }
+
+    G4LogicalVolume *fiberPlasticLog = fiberCladLog[0][0];
+    G4LogicalVolume *fiberQuartzLog = fiberCladLog[0][1];
+    G4LogicalVolume *fiberSLog = fiberCladLog[0][2];
+    G4LogicalVolume *fiberCorePlasticLog = fiberCoreLog[0][0];
+    G4LogicalVolume *fiberCoreQuartzLog = fiberCoreLog[0][1];
+    G4LogicalVolume *fiberCoreSLog = fiberCoreLog[0][2];
 
     //  Seven fiber slots per copper: one on the axis and six at 30, 90, 150, 210,
     //  270 and 330 degrees.  Four of them carry Cherenkov fibers and three carry
@@ -446,33 +499,38 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     const G4ThreeVector cherenkovSlot[4] = {
         G4ThreeVector(0., 0., 0.),        //  on the axis
         G4ThreeVector(cx1, cy1, 0.),      //   30 degrees
-        G4ThreeVector(-cx1, -cy1, 0.),    //  210 degrees
+        G4ThreeVector(-cx1, cy1, 0.),     //  150 degrees
         G4ThreeVector(0., -R, 0.)};       //  270 degrees
     const G4ThreeVector scintSlot[3] = {
         G4ThreeVector(cx1, -cy1, 0.),     //  330 degrees
         G4ThreeVector(0., R, 0.),         //   90 degrees
-        G4ThreeVector(-cx1, cy1, 0.)};    //  150 degrees
+        G4ThreeVector(-cx1, -cy1, 0.)};   //  210 degrees
 
     G4Material *holeMaterial = G4Material::GetMaterial("G4_AIR"); // G4_AIR or G4_Galactic
-    auto holeS = new G4Tubs("Hole", 0.0, holeDiameter / 2.0, calorSizeZ / 2.,
-                            0.0 * deg, 360. * deg);
 
-    //  One hole logical volume per Cherenkov flavour.  Copy numbers are kept as
-    //  they were: Cherenkov fibers are 0..3 and scintillating fibers are 1..3.
-    G4LogicalVolume *holeLV[2] = {nullptr, nullptr}; //  [0] plastic, [1] quartz
-    for (int flavour = 0; flavour < 2; ++flavour)
+    //  One hole per Cherenkov flavour per segment.  Copy numbers are kept as they
+    //  were: Cherenkov fibers are 0..3 and scintillating fibers are 1..3, and the
+    //  tail repeats them so a hit carries the same fiber number wherever it lands.
+    G4LogicalVolume *holeLV[2][2] = {{nullptr, nullptr}, {nullptr, nullptr}}; //  [segment][0=plastic, 1=quartz]
+    for (int seg = 0; seg < (hasTail ? 2 : 1); ++seg)
     {
-        const bool quartz = (flavour == 1);
-        holeLV[flavour] = new G4LogicalVolume(
-            holeS, holeMaterial, quartz ? "HoleQuartz" : "HolePlastic");
-        G4LogicalVolume *cherenkovLV = quartz ? fiberQuartzLog : fiberPlasticLog;
-        const G4String cherenkovName = quartz ? "fiberCladQuartz" : "fiberCladPlastic";
-        for (int i = 0; i < 4; ++i)
-            new G4PVPlacement(0, cherenkovSlot[i], cherenkovLV, cherenkovName,
-                              holeLV[flavour], false, i, fCheckOverlaps);
-        for (int i = 0; i < 3; ++i)
-            new G4PVPlacement(0, scintSlot[i], fiberSLog, "fiberCladS",
-                              holeLV[flavour], false, i + 1, fCheckOverlaps);
+        const G4String tag = (seg == 0) ? "" : "Tail";
+        auto holeS = new G4Tubs("Hole" + tag, 0.0, holeDiameter / 2.0, segHalfZ[seg],
+                                0.0 * deg, 360. * deg);
+        for (int flavour = 0; flavour < 2; ++flavour)
+        {
+            const bool quartz = (flavour == 1);
+            holeLV[seg][flavour] = new G4LogicalVolume(
+                holeS, holeMaterial, (quartz ? "HoleQuartz" : "HolePlastic") + tag);
+            G4LogicalVolume *cherenkovLV = fiberCladLog[seg][quartz ? 1 : 0];
+            const G4String cherenkovName = quartz ? "fiberCladQuartz" : "fiberCladPlastic";
+            for (int i = 0; i < 4; ++i)
+                new G4PVPlacement(0, cherenkovSlot[i], cherenkovLV, cherenkovName,
+                                  holeLV[seg][flavour], false, i, fCheckOverlaps);
+            for (int i = 0; i < 3; ++i)
+                new G4PVPlacement(0, scintSlot[i], fiberCladLog[seg][2], "fiberCladS",
+                                  holeLV[seg][flavour], false, i + 1, fCheckOverlaps);
+        }
     }
 
     //
@@ -491,7 +549,7 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     //  is called "AirGap" instead of "Rod" so that the stepping action does not
     //  count it as absorber -- it falls through to caloType 0, which contributes
     //  to eCalotruth but not to eRodtruth.
-    auto rodS = new G4Box("Rod", rodSize / 2.0, rodSize / 2.0, calorSizeZ / 2.);
+    auto rodS = new G4Box("Rod", rodSize / 2.0, rodSize / 2.0, copperLength / 2.);
     G4LogicalVolume *rodLV[CaloXFiberMap::kNTypes] = {nullptr, nullptr, nullptr, nullptr};
     const char *rodLogName[CaloXFiberMap::kNTypes] = {"RodEmpty", "RodPlastic", "RodQuartz",
                                                       "AirGap"};
@@ -502,9 +560,29 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
         rodLV[t] = new G4LogicalVolume(rodS, absent ? defaultMaterial : calorMaterial,
                                        rodLogName[t]);
         if (t == CaloXFiberMap::kPlastic || t == CaloXFiberMap::kQuartz)
-            new G4PVPlacement(0, G4ThreeVector(), holeLV[t == CaloXFiberMap::kQuartz ? 1 : 0],
+            new G4PVPlacement(0, G4ThreeVector(), holeLV[0][t == CaloXFiberMap::kQuartz ? 1 : 0],
                               "Hole", rodLV[t], false, 0, fCheckOverlaps);
     }
+
+    //  Past the back of the copper each instrumented rod continues as air holding
+    //  the fiber tail.  It sits at the same nesting depth as a rod and carries the
+    //  same copy number, so a step in a tail fiber reports the same rod and layer
+    //  as one in the copper.  It is called "FiberTail" rather than "Rod" so the
+    //  stepping action does not count it as absorber.
+    G4LogicalVolume *tailRodLV[CaloXFiberMap::kNTypes] = {nullptr, nullptr, nullptr, nullptr};
+    if (hasTail)
+    {
+        auto tailRodS = new G4Box("FiberTail", rodSize / 2.0, rodSize / 2.0, fiberTailLength / 2.);
+        for (int t = CaloXFiberMap::kPlastic; t <= CaloXFiberMap::kQuartz; ++t)
+        {
+            tailRodLV[t] = new G4LogicalVolume(tailRodS, defaultMaterial,
+                                               t == CaloXFiberMap::kQuartz ? "FiberTailQuartz"
+                                                                           : "FiberTailPlastic");
+            new G4PVPlacement(0, G4ThreeVector(), holeLV[1][t == CaloXFiberMap::kQuartz ? 1 : 0],
+                              "Hole", tailRodLV[t], false, 0, fCheckOverlaps);
+        }
+    }
+    const double tailZ = copperLength / 2.0 + fiberTailLength / 2.0;
 
     auto layerS = new G4Box("Layer", calorSizeX / 2.0, layerThickness / 2.0, calorSizeZ / 2.);
 
@@ -531,14 +609,22 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
         {
             std::ostringstream lname;
             lname << "Layer" << layerByPattern.size();
-            thisLayerLV = new G4LogicalVolume(layerS, calorMaterial, lname.str());
+            //  Air, like the calorimeter envelope: the copper is in the rods.
+            //  The layer is as long as the envelope while the rods are only as
+            //  long as the copper, so leaving this copper would fill the space in
+            //  front of and behind the rods with absorber.
+            thisLayerLV = new G4LogicalVolume(layerS, defaultMaterial, lname.str());
             for (int rod = 0; rod < nRodsI; ++rod)
             {
                 const int t = pattern[rod] - '0';
+                const double rodX = (rod + 0.5) * rodSize - calorSizeX / 2.0;
                 new G4PVPlacement(
-                    0,
-                    G4ThreeVector((rod + 0.5) * rodSize - calorSizeX / 2.0, 0., 0.),
+                    0, G4ThreeVector(rodX, 0., 0.),
                     rodLV[t], rodPhysName[t], thisLayerLV, false, rod, fCheckOverlaps);
+                if (tailRodLV[t])
+                    new G4PVPlacement(
+                        0, G4ThreeVector(rodX, 0., tailZ),
+                        tailRodLV[t], "FiberTail", thisLayerLV, false, rod, fCheckOverlaps);
             }
             layerByPattern[pattern] = thisLayerLV;
             thisLayerLV->SetVisAttributes(new G4VisAttributes(FALSE, G4Colour(0.0, 1.0, 0.0, 0.6)));
@@ -568,8 +654,10 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     calorLV->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(1.0, 0.0, 0.0, 0.1)));  // red
     for (int t = 0; t < CaloXFiberMap::kNTypes; ++t)
         rodLV[t]->SetVisAttributes(new G4VisAttributes(FALSE, G4Colour(0.0, 0.0, 0.0, 0.6))); // blue
-    for (int flavour = 0; flavour < 2; ++flavour)
-        holeLV[flavour]->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(1.0, 1.0, 1.0, 0.5))); // white
+    for (int seg = 0; seg < 2; ++seg)
+        for (int flavour = 0; flavour < 2; ++flavour)
+            if (holeLV[seg][flavour])
+                holeLV[seg][flavour]->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(1.0, 1.0, 1.0, 0.5))); // white
     fiberPlasticLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.8, 0.5, 0.8, 0.9)));
     fiberCorePlasticLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.98, 0.5, 0.98, 0.9)));
     fiberQuartzLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.5, 0.8, 0.5, 0.9)));

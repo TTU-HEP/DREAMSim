@@ -57,7 +57,9 @@ private:
   double fAbsLen_CoreC;         // bulk absorption length, PMMA (mm)
   double fAbsLen_CoreQ;         // bulk absorption length, Fused_Silica (mm)
   double fR_Core;               // core radius, read from fiberCoreS logical volume
-  double fFiberHalfZ;           // fiber half-length, read from fiberCoreS logical volume
+  double fFiberHalfZ;           // half-length of the in-copper fiber segment
+  double fFiberFrontZ;          // z of the fiber front face, at the front of the copper
+  double fFiberBackZ;           // z of the far end of the fiber, past the back of the copper
   void   initOptics();          // performs the one-time lookup
   double findInvisible(const G4Step *step, bool verbose = false);
   void fillOPInfo(const G4Step *step, bool verbose = false);
