@@ -1,0 +1,63 @@
+{
+  "format": "DREAMSim fiber map v1",
+  "source": "/data1/yofeng/plots/image.png + /data1/yofeng/plots/image_zoomed.png",
+  "nRods": 90,
+  "nLayers": 80,
+  "rodsPerCellX": 3,
+  "layersPerCellY": 4,
+  "legend": {
+    "Q": "4 quartz Cherenkov + 3 scintillating fibers",
+    "P": "4 plastic Cherenkov + 3 scintillating fibers",
+    ".": "no fibers, solid copper (drawn red)",
+    "_": "no fibers, solid copper (outside the drawn detector)",
+    "*": "taken from the central grid below"
+  },
+  "gridNote": "one row per iy, listed from iy = nLayers/layersPerCellY - 1 (top) down to iy = 0; one character per ix = 0 (left) to nRods/rodsPerCellX - 1 (right)",
+  "grid": [
+    "______.......PPPP.......______",
+    "______..PPPPPPPPPPPPPP..______",
+    "_____PPPPPPPPPPPPPPPPPPPP_____",
+    "_____PPPPPPPPPPPPPPPPPPPP_____",
+    "___..PPPPPPQQQQQQQQPPPPPP..___",
+    "___..PPPPQQQQQQQQQQQQPPPP..___",
+    "_PPPPPPPQQQQQQQQQQQQQQPPPPPPP_",
+    ".PPPPPPQQQQQQQQQQQQQQQQPPPPPP.",
+    "PPPPPPPQQQQQQ****QQQQQQPPPPPPP",
+    "PPPPPPPQQQQQQ****QQQQQQPPPPPPP",
+    ".PPPPPPQQQQQQ****QQQQQQPPPPPP.",
+    ".PPPPPPQQQQQQ****QQQQQQPPPPPP.",
+    "_PPPPPPQQQQQQQQQQQQQQQQPPPPPP_",
+    "_PPPPPPPQQQQQQQQQQQQQQPPPPPPP_",
+    "___..PPPPQQQQQQQQQQQQPPPP..___",
+    "___..PPPPPPQQQQQQQQPPPPPP..___",
+    "_____PPPPPPPPPPPPPPPPPPPP_____",
+    "_____PPPPPPPPPPPPPPPPPPPP_____",
+    "______..PPPPPPPPPPPPPP..______",
+    "______.......PPPP.......______"
+  ],
+  "central": {
+    "note": "the cells of area 3, one row per layer, from the top layer (iy = iyMax, iyy = 3) down to (iy = iyMin, iyy = 0); one character per ix = ixMin (left) to ixMax (right)",
+    "ixMin": 13,
+    "ixMax": 16,
+    "iyMin": 8,
+    "iyMax": 11,
+    "grid": [
+      "QPPP",
+      "QQQQ",
+      "PPPP",
+      "QQQQ",
+      "PPPP",
+      "QQQQ",
+      "PQPP",
+      "QQQQ",
+      "PPPP",
+      "QQQQ",
+      "PPPP",
+      "QQQQ",
+      "PPPP",
+      "QQQQ",
+      "PPPP",
+      "QQQQ"
+    ]
+  }
+}

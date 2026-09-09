@@ -7,6 +7,7 @@
 #$$$ opSampleRod      45    (rod index for optical photon tracking; default=45)
 #$$$ opSampleLayer    40    (layer index for optical photon tracking; default=40)
 #$$$ saveOpticalPhotons  false   (true to write the per-photon OP_* branches; large files)
+#$$$ fiberMapFile  data/fibermap.json   (per-copper fiber map; see tools/fibermap_from_image.py)
 
 #$$$ rootPre       mc      (file name will be Pre+runName+runNumber+runSeq+runConfig+NoE.root)
 #$$$ createNtuple  true    (true or false))

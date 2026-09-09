@@ -7,6 +7,8 @@
 #include "G4VUserDetectorConstruction.hh"
 #include "globals.hh"
 
+#include "CaloXFiberMap.h"
+
 class G4VPhysicalVolume;
 class G4GlobalMagFieldMessenger;
 class G4MaterialPropertiesTable;
@@ -55,6 +57,8 @@ private:
   // magnetic field messenger
 
   G4bool fCheckOverlaps; // option to activate checking of volumes overlaps
+
+  CaloXFiberMap fFiberMap; // which fibers sit in each copper
 
   // G4MaterialPropertiesTable* fWorldMPT;
 };

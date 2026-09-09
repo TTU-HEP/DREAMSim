@@ -29,6 +29,10 @@
 #include <cmath>
 
 #include "CaloXTree.h"
+#include "CaloXFiberMap.h"
+#include <map>
+#include <sstream>
+#include <cstdlib>
 
 G4ThreadLocal G4GlobalMagFieldMessenger *CaloXDetectorConstruction::fMagFieldMessenger = nullptr;
 
@@ -37,6 +41,19 @@ CaloXDetectorConstruction::CaloXDetectorConstruction(CaloXTree *histo)
       hh(histo),
       fCheckOverlaps(true)
 {
+    //  The fiber map says what each copper contains.  It is required: building
+    //  the calorimeter without it would silently give a detector that is not the
+    //  one being modelled, so stop instead of guessing.
+    const std::string mapFile = hh->getParamS("fiberMapFile", false, "data/fibermap.json");
+    if (!fFiberMap.load(mapFile))
+    {
+        std::cout << "CaloXDetectorConstruction: could not read the fiber map from '"
+                  << mapFile << "'.  Set fiberMapFile in the mac file (or pass "
+                  << "-fiberMapFile <path>) to point at it.  Exiting." << std::endl;
+        std::exit(1);
+    }
+    std::cout << "CaloXDetectorConstruction: fiber map from " << mapFile << std::endl;
+    fFiberMap.print();
 }
 
 CaloXDetectorConstruction::~CaloXDetectorConstruction()
@@ -120,9 +137,10 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     double fiberLength = 250.0 * cm;
     double holeDiameter = 0.25 * cm;
     double rodSize = 0.4 * cm;
-    double noLayers = 80.0;
+    //  Taken from the fiber map so the two can never disagree (nominally 80 x 90).
+    double noLayers = fFiberMap.nLayers();
     double layerThickness = rodSize;
-    double noRods = 90.0;
+    double noRods = fFiberMap.nRods();
 
     double calorSizeX = rodSize * noRods;
     double calorSizeY = rodSize * noLayers;
@@ -206,67 +224,9 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
         0,               // copy number
         fCheckOverlaps); // checking overlaps
 
-    //
-    // Layer
-    //
-    auto layerS = new G4Box("Layer",                                                  // its name
-                            calorSizeX / 2.0, layerThickness / 2.0, calorSizeZ / 2.); // its size
-
-    auto layerLV = new G4LogicalVolume(
-        layerS,        // its solid
-        calorMaterial, // its material
-        "Layer");      // its name
-
-    new G4PVReplica(
-        "Layer",         // its name
-        layerLV,         // its logical volume
-        calorLV,         // its mother
-        kYAxis,          // axis of replication
-        noLayers,        // number of replic
-        layerThickness); // width of replica
-
-    //
-    // Rods in a layer
-    //
-    auto rodS = new G4Box("Rod",                                          // its name
-                          rodSize / 2.0, rodSize / 2.0, calorSizeZ / 2.); // its size
-
-    auto rodLV = new G4LogicalVolume(
-        rodS,          // its solid  [FIXED: was layerS — wrong geometry]
-        calorMaterial, // its material
-        "Rod");        // its name
-
-    new G4PVReplica(
-        "Rod",    // its name
-        rodLV,    // its logical volume
-        layerLV,  // its mother
-        kXAxis,   // axis of replication
-        noRods,   // number of replic
-        rodSize); // witdth of replica
-
-    //
-    // Hole in a Rod
-    //
-
-    G4Material *holeMaterial = G4Material::GetMaterial("G4_AIR"); // G4_AIR or G4_Galactic
-
-    auto holeS = new G4Tubs("Hole", // its name
-                            0.0, holeDiameter / 2.0, calorSizeZ / 2., 0.0 * deg, 360. * deg);
-
-    auto holeLV = new G4LogicalVolume(
-        holeS,        // its solid
-        holeMaterial, // its material
-        "Hole");      // its name
-
-    new G4PVPlacement(
-        0,               // no rotation
-        G4ThreeVector(), // at (0,0,0)
-        holeLV,          // its logical volume
-        "Hole",          // its name
-        rodLV,           // its mother  volume
-        false,           // no boolean operation
-        0,               // copy number
-        fCheckOverlaps); // checking overlaps
+    //  Layers, rods and holes are built after the fibers, further down: what a
+    //  copper contains depends on the fiber map, so the fiber logical volumes
+    //  have to exist first.
 
     //
     //  Fibers
@@ -468,26 +428,120 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     new G4PVPlacement(0, G4ThreeVector(0, 0, 0), fiberCoreQuartzLog, "fiberCoreChereQuartzPhys", fiberQuartzLog, false, 0);
     new G4PVPlacement(0, G4ThreeVector(0, 0, 0), fiberCoreSLog, "fiberCoreScintPhys", fiberSLog, false, 0);
 
+    //  Seven fiber slots per copper: one on the axis and six at 30, 90, 150, 210,
+    //  270 and 330 degrees.  Four of them carry Cherenkov fibers and three carry
+    //  scintillating ones, and whether the Cherenkov four are quartz or plastic
+    //  is what the fiber map decides per copper.
+    //
+    //  (The 150-degree slot used to be left empty while the third S fiber was
+    //  placed at 210 degrees, exactly on top of a quartz fiber; navigation
+    //  resolved to whichever was placed first, so that S fiber was invisible and
+    //  each copper had 4 C against 2 effective S.  fCheckOverlaps cannot see
+    //  this: G4 samples points on the surface of the new solid, which for two
+    //  exactly coincident solids return kSurface, not kInside.)
     double R = clad_Plastic_rMax * 2.0 + 0.01; // 10 micron gap between cenral and peripheral fibers
     double cx1 = R * cos(30.0 * deg);
     double cy1 = R * sin(30.0 * deg);
-    new G4PVPlacement(0, G4ThreeVector(0., 0., 0.), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 0, fCheckOverlaps);
-    new G4PVPlacement(0, G4ThreeVector(cx1, cy1, 0.0), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 1, fCheckOverlaps);
-    // new G4PVPlacement(0, G4ThreeVector(-cx1, cy1, 0.0), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 2, fCheckOverlaps);
-    // new G4PVPlacement(0, G4ThreeVector(0., -R, 0.), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 3, fCheckOverlaps);
-    new G4PVPlacement(0, G4ThreeVector(-cx1, -cy1, 0.), fiberQuartzLog, "fiberCladQuartz", holeLV, false, 2, fCheckOverlaps);
-    new G4PVPlacement(0, G4ThreeVector(0., -R, 0.), fiberQuartzLog, "fiberCladQuartz", holeLV, false, 3, fCheckOverlaps);
 
-    new G4PVPlacement(0, G4ThreeVector(cx1, -cy1, 0.), fiberSLog, "fiberCladS", holeLV, false, 1, fCheckOverlaps);
-    new G4PVPlacement(0, G4ThreeVector(0.0, R, 0.), fiberSLog, "fiberCladS", holeLV, false, 2, fCheckOverlaps);
-    //  The six peripheral slots sit at 30, 90, 150, 210, 270 and 330 degrees.  This
-    //  fiber belongs in the free 150-degree slot (-cx1, +cy1); with (-cx1, -cy1) it
-    //  coincided exactly with quartz copy 2 (same centre, same r_out), so navigation
-    //  always resolved to the quartz fiber placed earlier and this S fiber was
-    //  invisible -- leaving 4 C against 2 effective S fibers per hole instead of 4
-    //  against 3.  fCheckOverlaps does not catch it: G4 samples points on the surface
-    //  of the new solid, which for exactly coincident solids return kSurface.
-    new G4PVPlacement(0, G4ThreeVector(-cx1, cy1, 0.), fiberSLog, "fiberCladS", holeLV, false, 3, fCheckOverlaps);
+    const G4ThreeVector cherenkovSlot[4] = {
+        G4ThreeVector(0., 0., 0.),        //  on the axis
+        G4ThreeVector(cx1, cy1, 0.),      //   30 degrees
+        G4ThreeVector(-cx1, -cy1, 0.),    //  210 degrees
+        G4ThreeVector(0., -R, 0.)};       //  270 degrees
+    const G4ThreeVector scintSlot[3] = {
+        G4ThreeVector(cx1, -cy1, 0.),     //  330 degrees
+        G4ThreeVector(0., R, 0.),         //   90 degrees
+        G4ThreeVector(-cx1, cy1, 0.)};    //  150 degrees
+
+    G4Material *holeMaterial = G4Material::GetMaterial("G4_AIR"); // G4_AIR or G4_Galactic
+    auto holeS = new G4Tubs("Hole", 0.0, holeDiameter / 2.0, calorSizeZ / 2.,
+                            0.0 * deg, 360. * deg);
+
+    //  One hole logical volume per Cherenkov flavour.  Copy numbers are kept as
+    //  they were: Cherenkov fibers are 0..3 and scintillating fibers are 1..3.
+    G4LogicalVolume *holeLV[2] = {nullptr, nullptr}; //  [0] plastic, [1] quartz
+    for (int flavour = 0; flavour < 2; ++flavour)
+    {
+        const bool quartz = (flavour == 1);
+        holeLV[flavour] = new G4LogicalVolume(
+            holeS, holeMaterial, quartz ? "HoleQuartz" : "HolePlastic");
+        G4LogicalVolume *cherenkovLV = quartz ? fiberQuartzLog : fiberPlasticLog;
+        const G4String cherenkovName = quartz ? "fiberCladQuartz" : "fiberCladPlastic";
+        for (int i = 0; i < 4; ++i)
+            new G4PVPlacement(0, cherenkovSlot[i], cherenkovLV, cherenkovName,
+                              holeLV[flavour], false, i, fCheckOverlaps);
+        for (int i = 0; i < 3; ++i)
+            new G4PVPlacement(0, scintSlot[i], fiberSLog, "fiberCladS",
+                              holeLV[flavour], false, i + 1, fCheckOverlaps);
+    }
+
+    //
+    //  Rods, and the layers that hold them
+    //
+    //  A rod is copper with at most one hole in it, so there are only three kinds:
+    //  a hole with quartz Cherenkov fibers, a hole with plastic ones, and solid
+    //  copper.  Every rod is placed explicitly rather than replicated, because
+    //  replicas share one logical volume and so cannot differ from each other.
+    //  The physical volume is called "Rod" in all three cases: the stepping
+    //  action recognises rods by that name.
+    auto rodS = new G4Box("Rod", rodSize / 2.0, rodSize / 2.0, calorSizeZ / 2.);
+    G4LogicalVolume *rodLV[3] = {nullptr, nullptr, nullptr}; //  indexed by CaloXFiberMap::Type
+    const char *rodName[3] = {"RodEmpty", "RodPlastic", "RodQuartz"};
+    for (int t = 0; t < 3; ++t)
+    {
+        rodLV[t] = new G4LogicalVolume(rodS, calorMaterial, rodName[t]);
+        if (t != CaloXFiberMap::kEmpty)
+            new G4PVPlacement(0, G4ThreeVector(), holeLV[t == CaloXFiberMap::kQuartz ? 1 : 0],
+                              "Hole", rodLV[t], false, 0, fCheckOverlaps);
+    }
+
+    auto layerS = new G4Box("Layer", calorSizeX / 2.0, layerThickness / 2.0, calorSizeZ / 2.);
+
+    //  Layers that hold the same sequence of rod types can share one logical
+    //  volume, which keeps the number of placements down: outside the central
+    //  region four consecutive layers are identical by construction.
+    std::map<std::string, G4LogicalVolume *> layerByPattern;
+    const int nRodsI = int(noRods);
+    const int nLayersI = int(noLayers);
+
+    for (int layer = 0; layer < nLayersI; ++layer)
+    {
+        std::string pattern(nRodsI, '0');
+        for (int rod = 0; rod < nRodsI; ++rod)
+            pattern[rod] = char('0' + int(fFiberMap.type(rod, layer)));
+
+        G4LogicalVolume *thisLayerLV = nullptr;
+        std::map<std::string, G4LogicalVolume *>::iterator known = layerByPattern.find(pattern);
+        if (known != layerByPattern.end())
+        {
+            thisLayerLV = known->second;
+        }
+        else
+        {
+            std::ostringstream lname;
+            lname << "Layer" << layerByPattern.size();
+            thisLayerLV = new G4LogicalVolume(layerS, calorMaterial, lname.str());
+            for (int rod = 0; rod < nRodsI; ++rod)
+            {
+                const int t = pattern[rod] - '0';
+                new G4PVPlacement(
+                    0,
+                    G4ThreeVector((rod + 0.5) * rodSize - calorSizeX / 2.0, 0., 0.),
+                    rodLV[t], "Rod", thisLayerLV, false, rod, fCheckOverlaps);
+            }
+            layerByPattern[pattern] = thisLayerLV;
+            thisLayerLV->SetVisAttributes(new G4VisAttributes(FALSE, G4Colour(0.0, 1.0, 0.0, 0.6)));
+        }
+
+        new G4PVPlacement(
+            0,
+            G4ThreeVector(0., (layer + 0.5) * layerThickness - calorSizeY / 2.0, 0.),
+            thisLayerLV, "Layer", calorLV, false, layer, fCheckOverlaps);
+    }
+
+    std::cout << "CaloXDetectorConstruction: built " << nLayersI << " layers from "
+              << layerByPattern.size() << " distinct rod patterns, "
+              << layerByPattern.size() * nRodsI << " rod placements" << std::endl;
 
     /*if(sd){
      fiberCorePlasticLog->SetSensitiveDetector(sd);
@@ -501,10 +555,10 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
 
     worldLV->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.0, 0.0, 1.0, 0.5)));  // blue
     calorLV->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(1.0, 0.0, 0.0, 0.1)));  // red
-    layerLV->SetVisAttributes(new G4VisAttributes(FALSE, G4Colour(0.0, 1.0, 0.0, 0.6))); // green
-    rodLV->SetVisAttributes(new G4VisAttributes(FALSE, G4Colour(0.0, 0.0, 0.0, 0.6)));   // blue
-    // holeLV->SetVisAttributes(new G4VisAttributes(FALSE,G4Colour(1.0,1.0,1.0))); // black
-    holeLV->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(1.0, 1.0, 1.0, 0.5))); // white
+    for (int t = 0; t < 3; ++t)
+        rodLV[t]->SetVisAttributes(new G4VisAttributes(FALSE, G4Colour(0.0, 0.0, 0.0, 0.6))); // blue
+    for (int flavour = 0; flavour < 2; ++flavour)
+        holeLV[flavour]->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(1.0, 1.0, 1.0, 0.5))); // white
     fiberPlasticLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.8, 0.5, 0.8, 0.9)));
     fiberCorePlasticLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.98, 0.5, 0.98, 0.9)));
     fiberQuartzLog->SetVisAttributes(new G4VisAttributes(TRUE, G4Colour(0.5, 0.8, 0.5, 0.9)));

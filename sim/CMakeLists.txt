@@ -82,6 +82,16 @@ foreach(_script ${EXAMPLECALOX_SCRIPTS})
 endforeach()
 
 #----------------------------------------------------------------------------
+# Copy the fiber map next to the executable, so that the default
+# fiberMapFile of data/fibermap.json resolves from the build directory.
+#
+configure_file(
+  ${PROJECT_SOURCE_DIR}/data/fibermap.json
+  ${PROJECT_BINARY_DIR}/data/fibermap.json
+  COPYONLY
+  )
+
+#----------------------------------------------------------------------------
 # Install the executable to 'bin' directory under CMAKE_INSTALL_PREFIX
 #
 install(TARGETS CaloXSim DESTINATION bin)
