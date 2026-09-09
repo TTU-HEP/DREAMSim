@@ -47,9 +47,15 @@ Structure of software:
 
 - `sim/CaloXSim.cc`: main program
 - `sim/src/CaloXDetectorConstruction.cc`: detector geometry and fiber materials
+- `sim/src/CaloXFiberMap.cc`: reads the per-copper fiber map
 - `sim/src/CaloXSteppingAction.cc`: per-step hit and photon processing
 - `sim/src/CaloXEventAction.cc`: per-event data accumulation
 - `sim/src/CaloXTree.cc`: ROOT ntuple output and analysis
+- `sim/data/fibermap.json`: which fibers sit in each copper
+- `tools/fibermap_from_image.py`: regenerates that map from the engineering plots
+
+[`sim/README.md`](sim/README.md) covers the geometry, the fiber map, the run
+parameters and the output branches in detail.
 
 #### Fiber types
 
@@ -57,14 +63,23 @@ Three fiber types are simulated:
 
 | Fiber     | Role    | Material            | Elements | Density (g/cm³) | n     | Att. length |
 |-----------|---------|---------------------|----------|-----------------|-------|-------------|
-| S-fiber   | core    | Polystyrene         | C8H8     | 1.05            | 1.622 | 3.0 m       |
+| S-fiber   | core    | Polystyrene         | C8H8     | 1.05            | 1.622 | 2.0 m       |
 |           | clad    | PMMA_Clad           | C5H8O2   | 1.19            | 1.504 | 5.0 m       |
 | C-Plastic | core    | PMMA                | C5H8O2   | 1.19            | 1.504 | 5.0 m       |
 |           | clad    | Fluorinated_Polymer | C2F2     | 1.43            | 1.42  | 10.0 m      |
-| C-Quartz  | core    | Fused_Silica        | SiO2     | 1.19            | 1.468 | 10.0 m      |
+| C-Quartz  | core    | Fused_Silica        | SiO2     | 2.2             | 1.468 | 10.0 m      |
 |           | clad    | Hard_Polymer        | C2F2     | 1.43            | 1.42  | 10.0 m      |
 
 S-fibers measure scintillation light; C-Plastic and C-Quartz fibers measure Cherenkov light with different core materials.
+
+The detector is not uniform. Each copper carries seven fibers — either 4 quartz
+Cherenkov + 3 scintillating, or 4 plastic Cherenkov + 3 scintillating — and
+outside the detector outline there is no copper at all. Which of these applies
+where is read at run time from `sim/data/fibermap.json`, one entry per cell of
+3 rods by 4 layers (and 3 rods by 1 layer in the central region). The map is
+printed at the start of every run, so each output file records the geometry it
+was made with. See [`sim/README.md`](sim/README.md) for the format and for the
+two parts of it that still want checking against the engineering drawings.
 
 #### Run the code
 
@@ -77,6 +92,12 @@ S-fibers measure scintillation light; C-Plastic and C-Quartz fibers measure Cher
 ```
 
 All run parameters are defined in `paramBatch03_single.mac` and may be overridden on the command line or via `runBatch03_single_param.sh`.
+
+The fiber map has to be reachable from the working directory. `cmake` copies it
+to `data/fibermap.json` next to the executable, so running from the build
+directory works as is; from anywhere else, pass `-fiberMapFile /path/to/fibermap.json`.
+Per-photon optical output is off by default — add `-saveOpticalPhotons true` to
+turn it on, at roughly 13x the file size.
 
 The output is a ROOT file containing an ntuple (TTree) with per-event hit information for all fiber types.
 
