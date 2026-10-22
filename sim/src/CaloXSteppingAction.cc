@@ -26,6 +26,7 @@
 #include "G4LogicalVolumeStore.hh"
 #include "G4Tubs.hh"
 #include "G4MaterialPropertiesTable.hh"
+#include "G4TouchableHistory.hh"
 
 
 CaloXSteppingAction::CaloXSteppingAction(CaloXEventAction *eventAction, CaloXTree *histo)
@@ -950,11 +951,14 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
       const double n_core = isCoreS ? N_CORE_S : (isCoreC ? N_CORE_C : N_CORE_Q);
       const double n_clad = isCoreS ? N_CLAD_S : (isCoreC ? N_CLAD_C : N_CLAD_Q);
       const double abs_len = isCoreS ? fAbsLen_CoreS : (isCoreC ? fAbsLen_CoreC : fAbsLen_CoreQ);
+      // Use one pre-step state, relative to the core's own axis and centre.
+      const auto &toLocal = preStepPoint->GetTouchableHandle()->GetHistory()->GetTopTransform();
+      const G4ThreeVector localPosition = toLocal.TransformPoint(preStepPoint->GetPosition());
+      const G4ThreeVector localDirection = toLocal.TransformAxis(preStepPoint->GetMomentumDirection());
       computeAnalyticalTIR(photon,
-                           track->GetMomentumDirection(),
-                           preStepPoint->GetPosition(),
+                           localDirection, localPosition,
                            n_core, n_clad, R_CORE, FIBER_HALF_Z,
-                           track->GetGlobalTime(), abs_len);
+                           preStepPoint->GetGlobalTime(), abs_len);
     }
 
     hh->photonData.push_back(photon);
