@@ -38,11 +38,17 @@ CaloXSteppingAction::CaloXSteppingAction(CaloXEventAction *eventAction, CaloXTre
   int sipmType = histo->getParamI("sipmType");
   initPDE(sipmType); // 1= J 6 mm 6.0V, 2= J 6 mm 2.5V
 
-  // Read optical photon sampling rod/layer from mac parameters (defaults: 45, 40)
+  // Defaults select one rod; the explicit pair (-1, -1) tracks the whole detector.
   opSampleRod   = histo->getParamI("opSampleRod",   false, 45);
   opSampleLayer = histo->getParamI("opSampleLayer", false, 40);
+  if (opSampleRod < -1 || opSampleLayer < -1 ||
+      ((opSampleRod == -1) != (opSampleLayer == -1)))
+    G4Exception("CaloXSteppingAction", "InvalidOpticalScope", FatalException,
+                "Use nonnegative rod/layer indices, or set BOTH to -1 for full optical tracking.");
   std::cout << "Optical photon sampling: rod=" << opSampleRod
             << "  layer=" << opSampleLayer << std::endl;
+  if (opSampleRod == -1 && opSampleLayer == -1)
+    std::cout << "Optical photon tracking: all rods and layers" << std::endl;
 
 
 
@@ -900,7 +906,8 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
   const int rodNumber   = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 2);
   const int layerNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 3);
 
-  const bool isSampleRod = (rodNumber == opSampleRod && layerNumber == opSampleLayer);
+  const bool isSampleRod = (opSampleRod == -1 && opSampleLayer == -1) ||
+                           (rodNumber == opSampleRod && layerNumber == opSampleLayer);
 
   // -----------------------------------------------------------------------
   //  At photon birth: record info and compute analytical TIR for all rods.
@@ -971,7 +978,7 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
   }
 
   // -----------------------------------------------------------------------
-  //  Sample rod only: update exit info when photon leaves the fiber
+  //  Selected optical scope: update exit info when photon leaves the fiber
   // -----------------------------------------------------------------------
   if (postStepPoint->GetTouchableHandle()->GetVolume())
   {
