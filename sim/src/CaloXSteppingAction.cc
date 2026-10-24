@@ -26,6 +26,7 @@
 #include "G4LogicalVolumeStore.hh"
 #include "G4Tubs.hh"
 #include "G4MaterialPropertiesTable.hh"
+#include "G4TouchableHistory.hh"
 
 
 CaloXSteppingAction::CaloXSteppingAction(CaloXEventAction *eventAction, CaloXTree *histo)
@@ -37,11 +38,17 @@ CaloXSteppingAction::CaloXSteppingAction(CaloXEventAction *eventAction, CaloXTre
   int sipmType = histo->getParamI("sipmType");
   initPDE(sipmType); // 1= J 6 mm 6.0V, 2= J 6 mm 2.5V
 
-  // Read optical photon sampling rod/layer from mac parameters (defaults: 45, 40)
+  // Defaults select one rod; the explicit pair (-1, -1) tracks the whole detector.
   opSampleRod   = histo->getParamI("opSampleRod",   false, 45);
   opSampleLayer = histo->getParamI("opSampleLayer", false, 40);
+  if (opSampleRod < -1 || opSampleLayer < -1 ||
+      ((opSampleRod == -1) != (opSampleLayer == -1)))
+    G4Exception("CaloXSteppingAction", "InvalidOpticalScope", FatalException,
+                "Use nonnegative rod/layer indices, or set BOTH to -1 for full optical tracking.");
   std::cout << "Optical photon sampling: rod=" << opSampleRod
             << "  layer=" << opSampleLayer << std::endl;
+  if (opSampleRod == -1 && opSampleLayer == -1)
+    std::cout << "Optical photon tracking: all rods and layers" << std::endl;
 
 
 
@@ -899,7 +906,8 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
   const int rodNumber   = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 2);
   const int layerNumber = preStepPoint->GetTouchableHandle()->GetCopyNumber(fiberIdx + 3);
 
-  const bool isSampleRod = (rodNumber == opSampleRod && layerNumber == opSampleLayer);
+  const bool isSampleRod = (opSampleRod == -1 && opSampleLayer == -1) ||
+                           (rodNumber == opSampleRod && layerNumber == opSampleLayer);
 
   // -----------------------------------------------------------------------
   //  At photon birth: record info and compute analytical TIR for all rods.
@@ -950,11 +958,14 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
       const double n_core = isCoreS ? N_CORE_S : (isCoreC ? N_CORE_C : N_CORE_Q);
       const double n_clad = isCoreS ? N_CLAD_S : (isCoreC ? N_CLAD_C : N_CLAD_Q);
       const double abs_len = isCoreS ? fAbsLen_CoreS : (isCoreC ? fAbsLen_CoreC : fAbsLen_CoreQ);
+      // Use one pre-step state, relative to the core's own axis and centre.
+      const auto &toLocal = preStepPoint->GetTouchableHandle()->GetHistory()->GetTopTransform();
+      const G4ThreeVector localPosition = toLocal.TransformPoint(preStepPoint->GetPosition());
+      const G4ThreeVector localDirection = toLocal.TransformAxis(preStepPoint->GetMomentumDirection());
       computeAnalyticalTIR(photon,
-                           track->GetMomentumDirection(),
-                           preStepPoint->GetPosition(),
+                           localDirection, localPosition,
                            n_core, n_clad, R_CORE, FIBER_HALF_Z,
-                           track->GetGlobalTime(), abs_len);
+                           preStepPoint->GetGlobalTime(), abs_len);
     }
 
     hh->photonData.push_back(photon);
@@ -967,7 +978,7 @@ void CaloXSteppingAction::fillOPInfo(const G4Step *step, bool verbose)
   }
 
   // -----------------------------------------------------------------------
-  //  Sample rod only: update exit info when photon leaves the fiber
+  //  Selected optical scope: update exit info when photon leaves the fiber
   // -----------------------------------------------------------------------
   if (postStepPoint->GetTouchableHandle()->GetVolume())
   {

@@ -4,8 +4,8 @@
 #$$$ runConfig    Test    (string camera number and (rock,air, air) in (cairn, chamber, passage)
 #$$$ numberOfEvents   10
 #$$$ eventsInNtuple     10     (maximum number of events in ntuple output file)
-#$$$ opSampleRod      45    (rod index for optical photon tracking; default=45)
-#$$$ opSampleLayer    40    (layer index for optical photon tracking; default=40)
+#$$$ opSampleRod      45    (rod index for optical tracking; set BOTH sample indices to -1 for whole detector)
+#$$$ opSampleLayer    40    (layer index for optical tracking; default=40; -1/-1 opts into all rods/layers)
 
 #$$$ rootPre       mc      (file name will be Pre+runName+runNumber+runSeq+runConfig+NoE.root)
 #$$$ createNtuple  true    (true or false))

@@ -475,7 +475,7 @@ G4VPhysicalVolume *CaloXDetectorConstruction::DefineVolumes()
     new G4PVPlacement(0, G4ThreeVector(cx1, cy1, 0.0), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 1, fCheckOverlaps);
     // new G4PVPlacement(0, G4ThreeVector(-cx1, cy1, 0.0), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 2, fCheckOverlaps);
     // new G4PVPlacement(0, G4ThreeVector(0., -R, 0.), fiberPlasticLog, "fiberCladPlastic", holeLV, false, 3, fCheckOverlaps);
-    new G4PVPlacement(0, G4ThreeVector(-cx1, -cy1, 0.), fiberQuartzLog, "fiberCladQuartz", holeLV, false, 2, fCheckOverlaps);
+    new G4PVPlacement(0, G4ThreeVector(-cx1, cy1, 0.), fiberQuartzLog, "fiberCladQuartz", holeLV, false, 2, fCheckOverlaps);
     new G4PVPlacement(0, G4ThreeVector(0., -R, 0.), fiberQuartzLog, "fiberCladQuartz", holeLV, false, 3, fCheckOverlaps);
 
     new G4PVPlacement(0, G4ThreeVector(cx1, -cy1, 0.), fiberSLog, "fiberCladS", holeLV, false, 1, fCheckOverlaps);
